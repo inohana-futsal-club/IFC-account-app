@@ -819,3 +819,17 @@ select.bs-input {
   /* transactionsページでFABが被らないようにpaddingを追加 */
   #page-transactions { padding-bottom: 80px; }
 }
+
+/* ================================================================
+   CATEGORIES PAGE
+================================================================ */
+.cat-page-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 767px) {
+  .cat-page-grid {
+    grid-template-columns: 1fr;
+  }
+}

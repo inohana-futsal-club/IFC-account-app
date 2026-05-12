@@ -120,13 +120,29 @@ function showLoginScreen() {
   );
 }
 
-// One Tap でIDトークンを受け取った後、リダイレクトフローでアクセストークンを取得
 function handleOneTap(response) {
-  const payload = JSON.parse(atob(response.credential.split('.')[1]));
-  userEmail = payload.email;
-  sessionStorage.setItem('pending_email', userEmail);
-  // リダイレクト方式でアクセストークンを要求（postMessageを使わないのでCOOP非該当）
-  requestTokenViaRedirect();
+  try {
+    // 1. ペイロード部分（2番目のセグメント）を取得
+    const base64Url = response.credential.split('.')[1];
+    
+    // 2. Base64URL から標準の Base64 形式に置換
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    
+    // 3. デコード（マルチバイト文字/日本語対応のため decodeURIComponent を使用）
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    const payload = JSON.parse(jsonPayload);
+    userEmail = payload.email;
+    sessionStorage.setItem('pending_email', userEmail);
+    
+    // リダイレクト方式でアクセストークンを要求
+    requestTokenViaRedirect();
+  } catch (e) {
+    console.error("IDトークンの解析に失敗しました:", e);
+    toast("ログイン処理中にエラーが発生しました");
+  }
 }
 
 function requestTokenViaRedirect() {
@@ -1339,9 +1355,9 @@ function saveEditCategory(index) {
 async function saveCategories() {
   try {
     const rows = categoriesEdited.map(c => [c.type, c.classification, c.category, c.order || 0]);
-    await sheetsClear(SH.CATEGORIES + '!A2:D');
+    await sheetsClear(SH.CATEGORIES);
     if (rows.length > 0) {
-      await sheetsAppend(SH.CATEGORIES + '!A2:D', rows);
+      await sheetsAppend(SH.CATEGORIES, rows);
     }
     S.categories = categoriesEdited;
     initializeCategories();
@@ -1638,3 +1654,156 @@ function renderTx() {
 })();
 
 /* FAB は常時表示（スクロール制御なし） */
+
+/* ================================================================
+   CATEGORIES PAGE — 科目管理画面に一覧表示
+================================================================ */
+
+function renderCategoriesPage() {
+  const el = document.getElementById('categories-page-content');
+  if (!el) return;
+
+  const incCats = S.categories.filter(c => c.type === 'income');
+  const expCats = S.categories.filter(c => c.type === 'expense');
+
+  function groupHtml(cats, type) {
+    if (cats.length === 0) {
+      return '<div class="empty" style="padding:20px 0">科目がありません</div>';
+    }
+    const grouped = {};
+    cats.forEach(c => {
+      if (!grouped[c.classification]) grouped[c.classification] = [];
+      grouped[c.classification].push(c);
+    });
+    return Object.entries(grouped).map(([cls, items]) => `
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;
+             letter-spacing:.5px;margin-bottom:6px;padding:0 4px">${cls}</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${items.map(cat => `
+            <div style="display:flex;align-items:center;justify-content:space-between;
+                 padding:9px 12px;background:var(--sur);border:1px solid var(--bdr);border-radius:8px">
+              <span style="font-size:13px">${cat.category}</span>
+              <div style="display:flex;gap:5px">
+                <button class="btn bs sm" style="padding:3px 10px;font-size:11px;min-height:28px"
+                  onclick="openCategoryModalWithEdit('${type}','${escHtml(cls)}','${escHtml(cat.category)}')">編集</button>
+                <button class="btn bd sm" style="padding:3px 10px;font-size:11px;min-height:28px"
+                  onclick="deleteCategoryDirect('${type}','${escHtml(cls)}','${escHtml(cat.category)}')">削除</button>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  }
+
+  el.innerHTML = `
+    <div class="cat-page-grid">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--grn);display:inline-block"></span>
+            <span style="font-size:14px;font-weight:600">収入科目</span>
+          </div>
+          <button class="btn bp sm" onclick="openCategoryModalForType('income')">＋ 追加</button>
+        </div>
+        ${groupHtml(incCats, 'income')}
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>
+            <span style="font-size:14px;font-weight:600">支出科目</span>
+          </div>
+          <button class="btn bp sm" onclick="openCategoryModalForType('expense')">＋ 追加</button>
+        </div>
+        ${groupHtml(expCats, 'expense')}
+      </div>
+    </div>`;
+}
+
+// HTMLエスケープ（onclick属性内でシングルクォートが壊れないよう）
+function escHtml(str) {
+  return String(str).replace(/'/g, "\\'");
+}
+
+// 科目管理ページから直接削除
+async function deleteCategoryDirect(type, cls, catName) {
+  if (!confirm(`「${cls}」の「${catName}」を削除しますか？`)) return;
+  S.categories = S.categories.filter(c =>
+    !(c.type === type && c.classification === cls && c.category === catName));
+  const rows = S.categories.map(c => [c.type, c.classification, c.category, c.order || 0]);
+  try {
+    await sheetsClear(SH.CATEGORIES + '!A2:D');
+    if (rows.length > 0) await sheetsAppend(SH.CATEGORIES + '!A2:D', rows);
+    initializeCategories();
+    renderCategoriesPage();
+    toast('科目を削除しました');
+  } catch(e) {
+    console.error(e);
+    toast('削除に失敗しました');
+  }
+}
+
+// 種別を指定してモーダルを開く
+function openCategoryModalForType(type) {
+  openCategoryModal();
+  setTimeout(() => {
+    if (type === 'expense') {
+      const btn = document.getElementById('cat-type-expense');
+      if (btn) switchCatType('expense', btn);
+    }
+  }, 50);
+}
+
+// 編集状態でモーダルを開く
+function openCategoryModalWithEdit(type, cls, catName) {
+  openCategoryModal();
+  setTimeout(() => {
+    if (type === 'expense') {
+      const btn = document.getElementById('cat-type-expense');
+      if (btn) switchCatType('expense', btn);
+    }
+    setTimeout(() => {
+      const idx = categoriesEdited.findIndex(c =>
+        c.type === type && c.classification === cls && c.category === catName);
+      if (idx >= 0) editCategory(idx);
+    }, 50);
+  }, 50);
+}
+
+// showPage: categories 時に renderCategoriesPage を呼ぶ
+// ※ PAGE_NAMES に 'categories' を追加してボトムナビとも連携
+const _origShowPageCat = showPage;
+function showPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const pageEl = document.getElementById('page-' + n);
+  if (pageEl) pageEl.classList.add('active');
+  // ボトムナビのアクティブ化（categories=5番目）
+  const PAGE_NAMES_EX = ['dashboard','transactions','ledger','members','fees','categories','report'];
+  const idx = PAGE_NAMES_EX.indexOf(n);
+  document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
+  document.querySelectorAll('.bnav-btn')[idx]?.classList.add('active');
+  render();
+  if (n === 'ledger')      showLedger(currentLedger);
+  if (n === 'report')      renderChart();
+  if (n === 'categories')  renderCategoriesPage();
+}
+
+// saveCategories の後に科目管理ページを再描画
+const _origSaveCategoriesCat = saveCategories;
+async function saveCategories() {
+  await _origSaveCategoriesCat();
+  renderCategoriesPage();
+}
+
+/* ================================================================
+   renderCategoriesList の防御パッチ
+   categories-list 要素がなくてもエラーにならないよう上書き
+================================================================ */
+const _origRenderCategoriesList = renderCategoriesList;
+function renderCategoriesList() {
+  const el = document.getElementById('categories-list');
+  if (!el) return; // 要素がなければ何もしない
+  _origRenderCategoriesList();
+}
