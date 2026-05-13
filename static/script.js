@@ -508,14 +508,14 @@ function renderDash() {
       <div class="text-sm font-semibold mb-7 flex flex-gap-5" style="color:var(--csh);align-items:center">
         <span style="width:7px;height:7px;border-radius:50%;background:var(--csh);display:inline-block"></span>現金
       </div>
-      <div class="flex flex-between text-sm p-4-0" style="border-bottom:1px solid var(--bdr)"><span class="text-secondary-color">収入</span><span class="text-income number-mono">${fmt(ci)}</span></div>
+      <div class="flex flex-between text-sm p-4-0 border-b"><span class="text-secondary-color">収入</span><span class="text-income number-mono">${fmt(ci)}</span></div>
       <div class="flex flex-between text-sm p-4-0"><span class="text-secondary-color">支出</span><span class="text-expense number-mono">${fmt(co)}</span></div>
     </div>
     <div>
       <div class="text-sm font-semibold mb-7 flex flex-gap-5" style="color:var(--bnk);align-items:center">
         <span style="width:7px;height:7px;border-radius:50%;background:var(--bnk);display:inline-block"></span>銀行預金
       </div>
-      <div class="flex flex-between text-sm p-4-0" style="border-bottom:1px solid var(--bdr)"><span class="text-secondary-color">収入</span><span class="text-income number-mono">${fmt(bi)}</span></div>
+      <div class="flex flex-between text-sm p-4-0 border-b"><span class="text-secondary-color">収入</span><span class="text-income number-mono">${fmt(bi)}</span></div>
       <div class="flex flex-between text-sm p-4-0"><span class="text-secondary-color">支出</span><span class="text-expense number-mono">${fmt(bo)}</span></div>
     </div>`;
 
@@ -823,9 +823,9 @@ function renderCashLedger(acct, title) {
       <td class="text-center"><button class="btn bd sm" onclick="if(confirm('削除しますか？'))delTx(${t.id})">削除</button></td>
     </tr>`;
   });
-  return `<div class="card" style="padding:0;overflow:hidden">
+  return `<div class="card card-no-pad overflow-hidden">
     <div class="card-header">${title}</div>
-    <div style="overflow-x:auto"><table class="ltbl">
+    <div class="overflow-x-auto"><table class="ltbl">
       <thead><tr><th>日付</th><th>科目</th><th>摘要</th><th class="text-right">収入金額</th><th class="text-right">支出金額</th><th class="text-right">差引残高</th><th>編集</th><th>削除</th></tr></thead>
       <tbody>${rows||'<tr><td colspan="8" class="empty">データがありません</td></tr>'}</tbody>
       <tfoot><tr><td colspan="3" class="font-bold">合計</td>
@@ -857,12 +857,12 @@ function renderCatLedger() {
         <td class="num ${t.type==='income'?'text-income':'text-expense'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td>
       </tr>`;
     });
-    html += `<div class="card mb-10" style="padding:0;overflow:hidden">
-      <div class="flex flex-between" style="padding:10px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">
+    html += `<div class="card mb-10 card-no-pad overflow-hidden">
+      <div class="flex flex-between card-header">
         <span>${cls}</span>
         <span class="number-mono ${total>=0?'text-income':'text-expense'}">${total>=0?'+':''}${fmtN(total)}</span>
       </div>
-      <div style="overflow-x:auto"><table class="ltbl">
+      <div class="overflow-x-auto"><table class="ltbl">
         <thead><tr><th>日付</th><th>摘要</th><th class="text-center">科目</th><th>口座</th><th class="text-right">金額</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div></div>`;
@@ -880,14 +880,14 @@ function renderSummaryStatement() {
   const incRows = Object.keys(catInc).sort().map(c =>
     `<tr><td style="padding-left:24px">${c}</td><td class="num text-income">${fmtN(catInc[c])}</td></tr>`).join('');
   const expRows = Object.keys(catExp).sort().map(c =>
-    `<tr><td style="padding-left:24px">${c}</td><td class="num text-expense">${fmtN(catExp[c])}</td></tr>`).join('');
+    `<tr><td class="pl-24">${c}</td><td class="num text-expense">${fmtN(catExp[c])}</td></tr>`).join('');
   const net = incTotal - expTotal;
-  return `<div class="card" style="padding:0;overflow:hidden">
+  return `<div class="card card-no-pad overflow-hidden">
     <div class="card-header">収支計算書（全期間）</div>
-    <div style="overflow-x:auto"><table class="ltbl"><tbody>
-      <tr><td class="font-bold bg-income" style="padding:8px 14px">【収入の部】</td><td class="num font-bold bg-income">${fmtN(incTotal)}</td></tr>
+    <div class="overflow-x-auto"><table class="ltbl"><tbody>
+      <tr><td class="font-bold bg-income p-8-14">【収入の部】</td><td class="num font-bold bg-income">${fmtN(incTotal)}</td></tr>
       ${incRows}
-      <tr><td class="font-bold bg-expense" style="padding:8px 14px">【支出の部】</td><td class="num font-bold bg-expense">${fmtN(expTotal)}</td></tr>
+      <tr><td class="font-bold bg-expense p-8-14">【支出の部】</td><td class="num font-bold bg-expense">${fmtN(expTotal)}</td></tr>
       ${expRows}
       <tr style="border-top:2px solid var(--bdr)">
         <td class="font-bold" style="font-size:15px;padding:12px 14px">当期収支差額</td>
@@ -1243,8 +1243,8 @@ function renderExecUnpaid() {
     </tr>`;
   }).join('');
 
-  el.innerHTML = `<div class="card" style="padding:0;overflow:hidden">
-    <div class="unp-wrap"><table class="unp-tbl" style="min-width:100%">
+  el.innerHTML = `<div class="card card-no-pad overflow-hidden">
+    <div class="unp-wrap"><table class="unp-tbl min-w-full">
       <thead>${thead}</thead><tbody>${tbody}</tbody>
     </table></div></div>`;
 }
@@ -1298,7 +1298,7 @@ function renderAdjList() {
     : S.fee.adjs.map(a => `
         <div class="adj-item">
           <span>${attrBadge(a.attr)} <span style="font-family:'DM Mono',monospace;font-size:12px">${fmt(a.amount)}</span></span>
-          <span style="font-size:12px;color:var(--tx2)">${a.from}〜${a.to}</span>
+          <span class="text-xs-muted">${a.from}〜${a.to}</span>
           <button class="btn bd sm" onclick="delAdj(${a.id})">削除</button>
         </div>`).join('');
 }
@@ -1365,17 +1365,17 @@ function renderCategoriesList() {
         <div style="font-weight:600;margin-bottom:12px;font-size:13px">科目を編集</div>
         <div class="fg" style="margin-bottom:12px">
           <div class="fi">
-            <label style="font-size:12px">科目分類</label>
-            <input type="text" id="edit-cat-cls" value="${editCat.classification}" style="font-size:14px;padding:10px 12px">
+            <label class="text-sm">科目分類</label>
+            <input type="text" id="edit-cat-cls" value="${editCat.classification}" class="form-control">
           </div>
           <div class="fi">
-            <label style="font-size:12px">科目名</label>
-            <input type="text" id="edit-cat-name" value="${editCat.category}" style="font-size:14px;padding:10px 12px">
+            <label class="text-sm">科目名</label>
+            <input type="text" id="edit-cat-name" value="${editCat.category}" class="form-control">
           </div>
         </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn bs sm" style="flex:1" onclick="cancelEditCategory()">キャンセル</button>
-          <button class="btn bp sm" style="flex:1" onclick="saveEditCategory(${currentCatEditIndex})">保存</button>
+        <div class="flex flex-gap-6">
+          <button class="btn bs sm flex-1" onclick="cancelEditCategory()">キャンセル</button>
+          <button class="btn bp sm flex-1" onclick="saveEditCategory(${currentCatEditIndex})">保存</button>
         </div>
       </div>
     `;
@@ -1390,9 +1390,9 @@ function renderCategoriesList() {
           ${items.map((cat, idx) => `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:12px">
               <span>${cat.category}</span>
-              <div style="display:flex;gap:4px">
-                <button class="btn bs sm" style="padding:3px 8px;font-size:11px;min-height:28px" onclick="editCategory(${categoriesEdited.indexOf(cat)})">編集</button>
-                <button class="btn bd sm" style="padding:3px 8px;font-size:11px;min-height:28px" onclick="deleteCategoryByRef(${categoriesEdited.indexOf(cat)})">削除</button>
+              <div class="flex flex-gap-4">
+                <button class="btn bs sm btn-xs" onclick="editCategory(${categoriesEdited.indexOf(cat)})">編集</button>
+                <button class="btn bd sm btn-xs" onclick="deleteCategoryByRef(${categoriesEdited.indexOf(cat)})">削除</button>
               </div>
             </div>
           `).join('')}
@@ -1783,13 +1783,12 @@ function renderCategoriesPage() {
              letter-spacing:.5px;margin-bottom:6px;padding:0 4px">${cls}</div>
         <div style="display:flex;flex-direction:column;gap:3px">
           ${items.map(cat => `
-            <div style="display:flex;align-items:center;justify-content:space-between;
-                 padding:9px 12px;background:var(--sur);border:1px solid var(--bdr);border-radius:8px">
-              <span style="font-size:13px">${cat.category}</span>
-              <div style="display:flex;gap:5px">
-                <button class="btn bs sm" style="padding:3px 10px;font-size:11px;min-height:28px"
+            <div class="flex flex-between card-item">
+              <span class="text-base">${cat.category}</span>
+              <div class="flex flex-gap-5">
+                <button class="btn bs sm btn-xs-custom"
                   onclick="openCategoryModalWithEdit('${type}','${escHtml(cls)}','${escHtml(cat.category)}')">編集</button>
-                <button class="btn bd sm" style="padding:3px 10px;font-size:11px;min-height:28px"
+                <button class="btn bd sm btn-xs-custom"
                   onclick="deleteCategoryDirect('${type}','${escHtml(cls)}','${escHtml(cat.category)}')">削除</button>
               </div>
             </div>`).join('')}
@@ -1800,20 +1799,20 @@ function renderCategoriesPage() {
   el.innerHTML = `
     <div class="cat-page-grid">
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div style="display:flex;align-items:center;gap:8px">
+        <div class="flex-between-mb-14">
+          <div class="flex-center-gap-8">
             <span style="width:8px;height:8px;border-radius:50%;background:var(--grn);display:inline-block"></span>
-            <span style="font-size:14px;font-weight:600">収入科目</span>
+            <span class="text-base-bold">収入科目</span>
           </div>
           <button class="btn bp sm" onclick="openCategoryModalForType('income')">＋ 追加</button>
         </div>
         ${groupHtml(incCats, 'income')}
       </div>
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div style="display:flex;align-items:center;gap:8px">
+        <div class="flex-between-mb-14">
+          <div class="flex-center-gap-8">
             <span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>
-            <span style="font-size:14px;font-weight:600">支出科目</span>
+            <span class="text-base-bold">支出科目</span>
           </div>
           <button class="btn bp sm" onclick="openCategoryModalForType('expense')">＋ 追加</button>
         </div>

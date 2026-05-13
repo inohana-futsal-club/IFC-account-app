@@ -363,6 +363,9 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
 .mtbl tr.member-row-selected td { background: var(--grn-l); color: var(--tx); font-weight: 600; }
 .mtbl tr.member-row-selected td.text-secondary-color { color: var(--tx); }
 .mtbl tr.member-row-selected td.text-center { color: var(--tx); }
+.mtbl tr.member-row-selected .member-checkbox {
+  accent-color: var(--tx3);  /* より濃いベージュ色 */
+}
 
 /* チェックボックスの垂直中央揃え */
 #select-all-members,
@@ -372,6 +375,22 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
   height: 20px;
   padding: 0;
 }
+
+/* チェックボックスのフォーカス・アクティブ状態 */
+#select-all-members:focus,
+#select-all-members:active,
+.member-checkbox:focus,
+.member-checkbox:active {
+  outline: 2px solid var(--bdr);
+  outline-offset: 1px;
+}
+
+/* チェックボックスの選択状態 */
+#select-all-members:checked,
+.member-checkbox:checked {
+  accent-color: var(--tx3);  /* より濃いベージュ色 */
+}
+
 
 /* ================================================================
    FEE
@@ -854,7 +873,12 @@ select.bs-input {
 .flex-col { flex-direction: column; }
 .flex-center { align-items: center; justify-content: center; }
 .flex-between { justify-content: space-between; }
+.flex-between-center { align-items: center; justify-content: space-between; }
+.flex-between-mb-14 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.flex-center-gap-8 { display: flex; align-items: center; gap: 8px; }
+.flex-1 { flex: 1; }
 .flex-gap-4 { gap: 4px; }
+.flex-gap-5 { gap: 5px; }
 .flex-gap-6 { gap: 6px; }
 .flex-gap-8 { gap: 8px; }
 .flex-wrap { flex-wrap: wrap; }
@@ -869,6 +893,7 @@ select.bs-input {
 .hidden { display: none; }
 .w-full { width: 100%; }
 .w-auto { width: auto; }
+.min-w-full { min-width: 100%; }
 
 /* ================================================================
    UTILITY CLASSES - Typography
@@ -879,6 +904,14 @@ select.bs-input {
 .text-sm { font-size: 12px; }
 .text-xs { font-size: 11px; }
 .text-caption { font-size: 10px; }
+.text-base { font-size: 13px; }
+.text-base-bold { font-size: 14px; font-weight: 600; }
+.text-lg { font-size: 15px; }
+.text-xl { font-size: 16px; }
+.text-xs-muted { font-size: 12px; color: var(--tx2); }
+.text-xs-tertiary { font-size: 11px; color: var(--tx3); }
+.text-cash { color: var(--csh); }
+.text-bank { color: var(--bnk); }
 .font-bold { font-weight: 600; }
 .font-semibold { font-weight: 500; }
 
@@ -914,6 +947,10 @@ select.bs-input {
 ================================================================ */
 .card-inner { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; }
 .card-header { padding: 12px 16px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--bdr); }
+.card-item { padding: 9px 12px; background: var(--sur); border: 1px solid var(--bdr); border-radius: 8px; }
+.card-no-pad { padding: 0; }
+.overflow-hidden { overflow: hidden; }
+.overflow-x-auto { overflow-x: auto; }
 
 /* ================================================================
    UTILITY CLASSES - Padding & Spacing
@@ -922,9 +959,17 @@ select.bs-input {
 .p-4-0 { padding: 4px 0; }
 .p-7-0 { padding: 7px 0; }
 .p-7-bdr { padding: 7px 0; border-bottom: 1px solid var(--bdr); }
+.p-8-14 { padding: 8px 14px; }
 .p-2-8-20 { padding: 2px 8px 20px; }
+.p-20-0 { padding: 20px 0; }
+.p-6-8 { padding: 6px 8px; }
+.pl-24 { padding-left: 24px; }
 .mb-2 { margin-bottom: 2px; }
+.mb-6 { margin-bottom: 6px; }
 .mb-7 { margin-bottom: 7px; }
+.mt-4 { margin-top: 4px; }
+.border-b { border-bottom: 1px solid var(--bdr); }
+.border-t { border-top: 2px solid var(--bdr); }
 
 /* ================================================================
    UTILITY CLASSES - Gaps
@@ -945,6 +990,7 @@ select.bs-input {
    UTILITY CLASSES - Buttons
 ================================================================ */
 .btn-xs { padding: 3px 8px; font-size: 11px; min-height: 28px; }
+.btn-xs-custom { padding: 3px 10px; font-size: 11px; min-height: 28px; }
 .btn-sm-custom { padding: 4px 10px; font-size: 11px; min-height: 28px; }
 
 @media (max-width: 767px) {
