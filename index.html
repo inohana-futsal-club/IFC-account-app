@@ -73,9 +73,9 @@
             <span class="bnav-icon">💴</span>
             <span class="bnav-label">部費</span>
           </button>
-          <button class="bnav-btn" onclick="showPage('categories')">
-            <span class="bnav-icon">🏷️</span>
-            <span class="bnav-label">科目</span>
+          <button class="bnav-btn" onclick="showPage('budget')">
+            <span class="bnav-icon">💰</span>
+            <span class="bnav-label">予算</span>
           </button>
           <button class="bnav-btn" onclick="showPage('report')">
             <span class="bnav-icon">📊</span>
@@ -300,6 +300,10 @@
 
         <!-- ===== Ledger ===== -->
         <div class="page" id="page-ledger">
+          <div class="sh" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="st">帳簿</div>
+            <button class="btn bp sm" onclick="showPage('categories')">⚙ 科目設定</button>
+          </div>
           <div class="tab-pills" id="ledger-tabs">
             <button class="pill active" onclick="showLedger('cash')">現金出納帳</button>
             <button class="pill" onclick="showLedger('bank')">預金出納帳</button>
@@ -478,6 +482,21 @@
             <p style="font-size:13px;color:var(--tx2);margin-bottom:10px">取引データをCSVで書き出せます。</p>
             <button class="btn bp" onclick="exportCSV()">CSVをダウンロード</button>
           </div>
+        </div>
+
+        <!-- ===== Budget ===== -->
+        <div class="page" id="page-budget">
+          <div class="sh">
+            <div class="st">予算管理</div>
+            <button class="btn bp sm" onclick="openBudgetSettingsModal()">⚙ コート代設定</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
+            <label for="budget-month" style="font-size:12px;color:var(--tx2)">対象月</label>
+            <input type="month" id="budget-month" name="budget-month" onchange="renderBudget()"
+              style="font-size:13px;padding:6px 10px" autocomplete="off">
+            <button class="btn bs sm" onclick="openBudgetRecordModal()">➕ 予算を追加</button>
+          </div>
+          <div id="budget-content"></div>
         </div>
 
       </main>
@@ -738,6 +757,78 @@
         <div class="mact">
           <button class="btn bs" onclick="closeM('m-categories')">閉じる</button>
           <button class="btn bp" onclick="saveCategories()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- コート代設定 -->
+    <div class="mbg" id="m-budget-settings">
+      <div class="modal">
+        <div class="modal-title">コート代設定</div>
+        <div class="mb-16" style="padding:12px;background:var(--sur2);border-radius:8px">
+          <div class="font-semibold mb-12">新規コート設定</div>
+          <div class="fg mb-12">
+            <div class="fi">
+              <label for="budget-court-name" class="text-sm">コート名</label>
+              <input type="text" id="budget-court-name" placeholder="例：テニスコートA" style="font-size:14px;padding:10px 12px">
+            </div>
+            <div class="fi">
+              <label for="budget-court-condition" class="text-sm">条件（曜日・時間帯など）</label>
+              <input type="text" id="budget-court-condition" placeholder="例：平日" style="font-size:14px;padding:10px 12px">
+            </div>
+            <div class="fi">
+              <label for="budget-price-per-hour" class="text-sm">単価（円/時間）</label>
+              <input type="number" id="budget-price-per-hour" placeholder="0" min="0" inputmode="numeric" style="font-size:14px;padding:10px 12px">
+            </div>
+            <div class="fi full">
+              <label for="budget-court-remarks" class="text-sm">備考（任意）</label>
+              <input type="text" id="budget-court-remarks" placeholder="任意" style="font-size:14px;padding:10px 12px">
+            </div>
+          </div>
+          <button class="btn bp sm" style="width:100%" onclick="addBudgetSetting()">追加</button>
+        </div>
+
+        <div class="mb-16">
+          <div class="font-semibold mb-8">コート設定一覧</div>
+          <div id="budget-settings-list"></div>
+        </div>
+
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-budget-settings')">閉じる</button>
+          <button class="btn bp" onclick="saveBudgetSettings()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 予算記録追加 -->
+    <div class="mbg" id="m-budget-record">
+      <div class="modal">
+        <div class="modal-title" id="budget-record-modal-title">予算を追加</div>
+        <div class="fg">
+          <div class="fi">
+            <label for="budget-record-date">日付</label>
+            <input type="date" id="budget-record-date" name="budget-record-date" autocomplete="off">
+          </div>
+          <div class="fi">
+            <label for="budget-record-court">コート設定</label>
+            <select id="budget-record-court" name="budget-record-court" onchange="updateBudgetCourtInfo()" autocomplete="off"></select>
+          </div>
+          <div class="fi">
+            <label for="budget-record-hours">使用時間（時間）</label>
+            <input type="number" id="budget-record-hours" name="budget-record-hours" placeholder="0.0" min="0" step="0.5" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="fi">
+            <div style="font-size:13px;color:var(--tx2);margin-bottom:6px">計算された金額</div>
+            <div style="padding:12px;background:var(--sur2);border-radius:8px;font-size:16px;font-weight:600;color:var(--red);" id="budget-record-amount-display">¥0</div>
+          </div>
+          <div class="fi full">
+            <label for="budget-record-remarks">備考（任意）</label>
+            <input type="text" id="budget-record-remarks" name="budget-record-remarks" placeholder="例：定期練習" autocomplete="off">
+          </div>
+        </div>
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-budget-record')">キャンセル</button>
+          <button class="btn bp" id="budget-record-submit-btn" onclick="addBudgetRecord()">追加する</button>
         </div>
       </div>
     </div>

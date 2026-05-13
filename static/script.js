@@ -13,6 +13,8 @@ const SH = {
   PRAC:    'practice_count',
   FEE_SET: 'fee_settings',
   CATEGORIES: 'categories',
+  BUDGET: 'budget_records',
+  BUDGET_SETTINGS: 'budget_settings',
 };
 
 /* ================================================================
@@ -52,6 +54,7 @@ let nid = 1;
 let S = {
   txs:[], members:[], feeRec:{}, pracCount:{}, categories:[],
   fee: { base:{ male:2000, female:2000, manager:1500, exec:500 }, adjs:[] },
+  budget: { records:[], settings:[] },
   acct: 'cash',
   type: 'income',
 };
@@ -254,6 +257,8 @@ async function ensureSheets() {
       [SH.PRAC]:    [['id','member_id','ym','count']],
       [SH.FEE_SET]: [['id','attr','amount','type','from_ym','to_ym']],
       [SH.CATEGORIES]: [['type','classification','category','order']],
+      [SH.BUDGET]: [['id','date','court_name','court_condition','hours','price_per_hour','amount','remarks']],
+      [SH.BUDGET_SETTINGS]: [['id','court_name','court_condition','price_per_hour','remarks']],
     };
     for (const name of toAdd) await sheetsUpdate(`${name}!A1`, headers[name]);
   }
@@ -266,13 +271,15 @@ async function loadAll() {
   setLoading(true, 'データを読み込み中...');
   await ensureSheets();
 
-  const [txRows, mRows, frRows, pcRows, fsRows, catRows] = await Promise.all([
+  const [txRows, mRows, frRows, pcRows, fsRows, catRows, budgetRecords, budgetSettings] = await Promise.all([
     sheetsGet(SH.TX      + '!A2:J'),
     sheetsGet(SH.MEMBERS + '!A2:D'),
     sheetsGet(SH.FEE_REC + '!A2:D'),
     sheetsGet(SH.PRAC    + '!A2:D'),
     sheetsGet(SH.FEE_SET + '!A2:F'),
     sheetsGet(SH.CATEGORIES + '!A2:D'),
+    sheetsGet(SH.BUDGET + '!A2:H'),
+    sheetsGet(SH.BUDGET_SETTINGS + '!A2:E'),
   ]);
 
   S.txs = txRows
@@ -315,6 +322,20 @@ async function loadAll() {
     .filter(r => r[0] && r[1] && r[2])
     .map(r => ({ type:r[0], classification:r[1], category:r[2], order:r[3]|0 }))
     .sort((a,b) => a.order - b.order);
+
+  S.budget.records = budgetRecords
+    .filter(r => r[0] && r[1])
+    .map(r => ({
+      id:r[0]|0, date:String(r[1]), court_name:String(r[2]||''), court_condition:String(r[3]||''),
+      hours:parseFloat(r[4])||0, price_per_hour:r[5]|0, amount:r[6]|0, remarks:r[7]||''
+    }));
+
+  S.budget.settings = budgetSettings
+    .filter(r => r[0] && r[1] && r[2])
+    .map(r => ({
+      id:r[0]|0, court_name:String(r[1]), court_condition:String(r[2]),
+      price_per_hour:r[3]|0, remarks:r[4]||''
+    }));
 
   setLoading(false);
 }
@@ -363,6 +384,16 @@ const saveFeeSettings = () => saveSheet(async () => {
   rows.push([rid++,'exec',S.fee.maxExec,'maxExec','','']);
   S.fee.adjs.forEach(a => rows.push([a.id,a.attr,a.amount,'adj',a.from,a.to]));
   await sheetsWriteAll(SH.FEE_SET, rows);
+});
+
+const saveBudgetRecords = () => saveSheet(async () => {
+  await sheetsWriteAll(SH.BUDGET,
+    S.budget.records.map(r => [r.id, r.date, r.court_name, r.court_condition, r.hours, r.price_per_hour, r.amount, r.remarks||'']));
+});
+
+const saveBudgetSettings = () => saveSheet(async () => {
+  await sheetsWriteAll(SH.BUDGET_SETTINGS,
+    S.budget.settings.map(s => [s.id, s.court_name, s.court_condition, s.price_per_hour, s.remarks||'']));
 });
 
 function showSaveInd(on) {
@@ -416,7 +447,7 @@ const fmtN   = n => Number(n).toLocaleString();
 /* ================================================================
    NAVIGATION
 ================================================================ */
-const PAGE_NAMES = ['dashboard','transactions','ledger','members','fees','report'];
+const PAGE_NAMES = ['dashboard','transactions','ledger','members','fees','budget','report'];
 
 function showPage(n) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -429,6 +460,12 @@ function showPage(n) {
   render();
   if (n === 'ledger') showLedger(currentLedger);
   if (n === 'report') renderChart();
+  if (n === 'budget') {
+    const today = new Date();
+    document.getElementById('budget-month').value = toYM(today);
+    renderBudget();
+  }
+  if (n === 'categories') renderCategoriesPage();
 }
 
 /* ================================================================
@@ -1872,24 +1909,7 @@ function openCategoryModalWithEdit(type, cls, catName) {
 }
 
 // showPage: categories 時に renderCategoriesPage を呼ぶ
-// ※ PAGE_NAMES に 'categories' を追加してボトムナビとも連携
 const _origShowPageCat = showPage;
-function showPage(n) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
-  const pageEl = document.getElementById('page-' + n);
-  if (pageEl) pageEl.classList.add('active');
-  // ボトムナビのアクティブ化（categories=5番目）
-  const PAGE_NAMES_EX = ['dashboard','transactions','ledger','members','fees','categories','report'];
-  const idx = PAGE_NAMES_EX.indexOf(n);
-  document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
-  document.querySelectorAll('.bnav-btn')[idx]?.classList.add('active');
-  render();
-  if (n === 'ledger')      showLedger(currentLedger);
-  if (n === 'report')      renderChart();
-  if (n === 'categories')  renderCategoriesPage();
-}
 
 // saveCategories の後に科目管理ページを再描画
 const _origSaveCategoriesCat = saveCategories;
@@ -1898,3 +1918,251 @@ async function saveCategories() {
   renderCategoriesPage();
 }
 
+/* ================================================================
+   BUDGET MANAGEMENT
+================================================================ */
+
+let editingBudgetRecordId = null;
+
+function openBudgetSettingsModal() {
+  renderBudgetSettingsList();
+  document.getElementById('budget-court-name').value = '';
+  document.getElementById('budget-court-condition').value = '';
+  document.getElementById('budget-price-per-hour').value = '';
+  document.getElementById('budget-court-remarks').value = '';
+  openM('m-budget-settings');
+}
+
+function openBudgetRecordModal(recordId = null) {
+  editingBudgetRecordId = recordId;
+
+  const titleEl = document.getElementById('budget-record-modal-title');
+  const submitBtn = document.getElementById('budget-record-submit-btn');
+
+  if (recordId) {
+    const record = S.budget.records.find(r => r.id === recordId);
+    if (!record) return;
+
+    titleEl.textContent = '予算を編集';
+    submitBtn.textContent = '保存する';
+
+    document.getElementById('budget-record-date').value = record.date;
+    document.getElementById('budget-record-hours').value = record.hours;
+    document.getElementById('budget-record-remarks').value = record.remarks;
+
+    const courtSelect = document.getElementById('budget-record-court');
+    const settingIdx = S.budget.settings.findIndex(s =>
+      s.court_name === record.court_name && s.court_condition === record.court_condition
+    );
+    if (settingIdx >= 0) {
+      courtSelect.value = settingIdx;
+    }
+  } else {
+    titleEl.textContent = '予算を追加';
+    submitBtn.textContent = '追加する';
+
+    const today = new Date();
+    document.getElementById('budget-record-date').value = today.toISOString().split('T')[0];
+    document.getElementById('budget-record-hours').value = '';
+    document.getElementById('budget-record-remarks').value = '';
+  }
+
+  const courtSelect = document.getElementById('budget-record-court');
+  if (S.budget.settings.length === 0) {
+    toast('コート代設定がありません。先に設定を追加してください。');
+    return;
+  }
+  courtSelect.innerHTML = S.budget.settings.map((s, idx) =>
+    `<option value="${idx}">${s.court_name} (${s.court_condition})</option>`
+  ).join('');
+  updateBudgetCourtInfo();
+  openM('m-budget-record');
+}
+
+function addBudgetSetting() {
+  const courtName = document.getElementById('budget-court-name').value.trim();
+  const courtCondition = document.getElementById('budget-court-condition').value.trim();
+  const pricePerHour = parseInt(document.getElementById('budget-price-per-hour').value);
+  const remarks = document.getElementById('budget-court-remarks').value.trim();
+
+  if (!courtName) { toast('コート名を入力してください'); return; }
+  if (!courtCondition) { toast('条件を入力してください'); return; }
+  if (!pricePerHour || pricePerHour <= 0) { toast('単価を正しく入力してください'); return; }
+
+  S.budget.settings.push({
+    id: nid++,
+    court_name: courtName,
+    court_condition: courtCondition,
+    price_per_hour: pricePerHour,
+    remarks: remarks
+  });
+
+  toast('コート設定を追加しました ✓');
+  renderBudgetSettingsList();
+}
+
+function deleteBudgetSetting(id) {
+  if (!confirm('このコート設定を削除しますか？')) return;
+  S.budget.settings = S.budget.settings.filter(s => s.id !== id);
+  toast('削除しました');
+  renderBudgetSettingsList();
+}
+
+function renderBudgetSettingsList() {
+  const el = document.getElementById('budget-settings-list');
+  if (!el) return;
+
+  if (S.budget.settings.length === 0) {
+    el.innerHTML = '<div style="color:var(--tx3);font-size:12px">設定がありません</div>';
+    return;
+  }
+
+  el.innerHTML = S.budget.settings.map(s => `
+    <div style="margin-bottom:12px;padding:10px;background:var(--sur);border-radius:6px;border:1px solid var(--bdr)">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${s.court_name}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${s.court_condition}</div>
+          <div style="font-size:13px;font-family:'DM Mono',monospace;color:var(--red);font-weight:500">¥${fmtN(s.price_per_hour)}/時間</div>
+          ${s.remarks ? `<div style="font-size:11px;color:var(--tx3);margin-top:4px">${s.remarks}</div>` : ''}
+        </div>
+        <button class="btn bd sm" onclick="deleteBudgetSetting(${s.id})" style="margin-left:10px">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateBudgetCourtInfo() {
+  const idx = parseInt(document.getElementById('budget-record-court').value);
+  const setting = S.budget.settings[idx];
+  if (!setting) return;
+
+  const hours = parseFloat(document.getElementById('budget-record-hours').value) || 0;
+  const amount = Math.round(hours * setting.price_per_hour);
+  document.getElementById('budget-record-amount-display').textContent = fmt(amount);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const hoursInput = document.getElementById('budget-record-hours');
+  if (hoursInput) {
+    hoursInput.addEventListener('input', updateBudgetCourtInfo);
+  }
+  const courtSelect = document.getElementById('budget-record-court');
+  if (courtSelect) {
+    courtSelect.addEventListener('change', updateBudgetCourtInfo);
+  }
+});
+
+async function addBudgetRecord() {
+  const date = document.getElementById('budget-record-date').value;
+  const courtIdx = parseInt(document.getElementById('budget-record-court').value);
+  const hours = parseFloat(document.getElementById('budget-record-hours').value);
+  const remarks = document.getElementById('budget-record-remarks').value.trim();
+
+  if (!date) { toast('日付を入力してください'); return; }
+  if (courtIdx < 0 || courtIdx >= S.budget.settings.length) { toast('コート設定を選択してください'); return; }
+  if (!hours || hours <= 0) { toast('使用時間を正しく入力してください'); return; }
+
+  const setting = S.budget.settings[courtIdx];
+  const amount = Math.round(hours * setting.price_per_hour);
+
+  if (editingBudgetRecordId) {
+    const record = S.budget.records.find(r => r.id === editingBudgetRecordId);
+    if (record) {
+      record.date = date;
+      record.court_name = setting.court_name;
+      record.court_condition = setting.court_condition;
+      record.hours = hours;
+      record.price_per_hour = setting.price_per_hour;
+      record.amount = amount;
+      record.remarks = remarks;
+      toast('予算を更新しました ✓');
+    }
+  } else {
+    S.budget.records.push({
+      id: nid++,
+      date: date,
+      court_name: setting.court_name,
+      court_condition: setting.court_condition,
+      hours: hours,
+      price_per_hour: setting.price_per_hour,
+      amount: amount,
+      remarks: remarks
+    });
+    toast('予算を追加しました ✓');
+  }
+
+  closeM('m-budget-record');
+  editingBudgetRecordId = null;
+  renderBudget();
+  await saveBudgetRecords();
+}
+
+async function deleteBudgetRecord(id) {
+  if (!confirm('この予算記録を削除しますか？')) return;
+  S.budget.records = S.budget.records.filter(r => r.id !== id);
+  toast('削除しました');
+  renderBudget();
+  await saveBudgetRecords();
+}
+
+function renderBudget() {
+  const ym = document.getElementById('budget-month')?.value;
+  if (!ym) return;
+
+  const records = S.budget.records.filter(r => r.date.startsWith(ym));
+
+  let totalBudget = 0;
+  records.forEach(r => { totalBudget += r.amount; });
+
+  const totalHours = records.reduce((s, r) => s + r.hours, 0);
+
+  const stats = `
+    <div class="fsrow">
+      <div class="fstat">
+        <div class="fn">${records.length}</div>
+        <div class="fl">登録数</div>
+      </div>
+      <div class="fstat">
+        <div class="fn">${totalHours.toFixed(1)}h</div>
+        <div class="fl">合計時間</div>
+      </div>
+      <div class="fstat">
+        <div class="fn" style="color:var(--red)">${fmt(totalBudget)}</div>
+        <div class="fl">月間予算</div>
+      </div>
+    </div>
+  `;
+
+  const tableHtml = records.length === 0
+    ? '<div class="empty">予算記録がありません</div>'
+    : `<div class="card card-no-pad overflow-hidden">
+        <div style="overflow-x:auto"><table class="ltbl">
+          <thead><tr>
+            <th>日付</th><th>コート</th><th>時間</th><th>単価</th><th class="text-right">金額</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${records.sort((a,b) => a.date.localeCompare(b.date))
+              .map(r => `<tr>
+                <td>${r.date.slice(5)}</td>
+                <td style="font-size:13px">${r.court_name}<br><span style="color:var(--tx2);font-size:11px">${r.court_condition}</span></td>
+                <td>${r.hours}h</td>
+                <td>${fmt(r.price_per_hour)}/h</td>
+                <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
+                <td style="white-space:nowrap"><button class="btn bs sm" onclick="openBudgetRecordModal(${r.id})" style="margin-right:4px">編集</button><button class="btn bd sm" onclick="deleteBudgetRecord(${r.id})">削除</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+
+  document.getElementById('budget-content').innerHTML = stats + tableHtml;
+}
+
+/* ================================================================
+   YEARLY BUDGET VIEW (within renderBudget or separate)
+================================================================ */
+
+async function saveAllBudget() {
+  await saveBudgetRecords();
+  await saveBudgetSettings();
+}
