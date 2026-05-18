@@ -2372,6 +2372,9 @@ const saveBudgetCategoryRecords = () => saveSheet(async () => {
   await sheetsWriteAll(SH.BUDGET_CATEGORY_RECORDS,
     S.budget.categoryRecords.map(r => [r.id, r.date, r.classification, r.category, r.amount, r.remarks || '']));
 });
+
+async function saveAllBudget() {
   await saveBudgetRecords();
   await saveBudgetSettings();
+  await saveBudgetCategoryRecords();
 }
