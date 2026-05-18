@@ -42,6 +42,46 @@ function getPaidStatusClasses(isPaid) {
 }
 
 /* ================================================================
+   UTILITY FUNCTIONS - Fiscal Year Helpers
+================================================================ */
+function getFiscalYear(dateStr) {
+  const date = new Date(dateStr);
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  return month >= 10 ? year : year - 1;
+}
+
+function getFiscalYearRange(fiscalYear) {
+  const months = [];
+  for (let m = 10; m <= 12; m++) {
+    months.push(`${fiscalYear}-${String(m).padStart(2, '0')}`);
+  }
+  for (let m = 1; m <= 9; m++) {
+    months.push(`${fiscalYear + 1}-${String(m).padStart(2, '0')}`);
+  }
+  return months;
+}
+
+function getFiscalYearLabel(fiscalYear) {
+  return `${fiscalYear}年度`;
+}
+
+function getAvailableFiscalYears() {
+  const years = new Set();
+  const today = new Date();
+  const currentYear = getFiscalYear(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+  years.add(currentYear);
+
+  S.budget.records.forEach(r => {
+    if (r.date) years.add(getFiscalYear(r.date));
+  });
+  S.budget.categoryRecords.forEach(r => {
+    if (r.date) years.add(getFiscalYear(r.date));
+  });
+  return Array.from(years).sort((a, b) => b - a);
+}
+
+/* ================================================================
    AUTH STATE
 ================================================================ */
 let accessToken = null;
@@ -53,6 +93,7 @@ let userEmail   = null;
 let currentBudgetTab = 'court';
 let editingBudgetRecordId = null;
 let budgetCategoryType = 'income';
+let currentFiscalYear = null;
 
 /* ================================================================
    APP STATE
@@ -2082,6 +2123,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tabBtn1) {
     tabBtn1.classList.add('active');
   }
+
+  initBudgetFiscalYear();
+  renderBudget();
 });
 
 async function addBudgetRecord() {
@@ -2149,7 +2193,8 @@ function renderCourtBudget() {
   const ym = document.getElementById('budget-month')?.value;
   if (!ym) return;
 
-  const records = S.budget.records.filter(r => r.date.startsWith(ym));
+  const range = getFiscalYearRange(currentFiscalYear);
+  const records = S.budget.records.filter(r => r.date.startsWith(ym) && range.some(m => r.date.startsWith(m)));
 
   let totalBudget = 0;
   records.forEach(r => { totalBudget += r.amount; });
@@ -2201,7 +2246,8 @@ function renderCategoryBudget() {
   const ym = document.getElementById('budget-category-month')?.value;
   if (!ym) return;
 
-  const records = S.budget.categoryRecords.filter(r => r.date.startsWith(ym));
+  const range = getFiscalYearRange(currentFiscalYear);
+  const records = S.budget.categoryRecords.filter(r => r.date.startsWith(ym) && range.some(m => r.date.startsWith(m)));
   const totalAmount = records.reduce((s, r) => s + r.amount, 0);
 
   const stats = `
@@ -2269,6 +2315,57 @@ function switchBudgetTab(tab) {
   }
 
   renderBudget();
+}
+
+function initBudgetFiscalYear() {
+  const availableYears = getAvailableFiscalYears();
+  const today = new Date();
+  const currentYear = getFiscalYear(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+
+  if (currentFiscalYear === null) {
+    currentFiscalYear = availableYears.includes(currentYear) ? currentYear : availableYears[0];
+  }
+
+  const fiscalSelect = document.getElementById('budget-fiscal-year');
+  const categorySelect = document.getElementById('budget-category-fiscal-year');
+
+  [fiscalSelect, categorySelect].forEach(select => {
+    if (!select) return;
+    select.innerHTML = '';
+    availableYears.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year;
+      option.textContent = getFiscalYearLabel(year);
+      if (year === currentFiscalYear) option.selected = true;
+      select.appendChild(option);
+    });
+  });
+}
+
+function switchBudgetFiscalYear() {
+  const fiscalSelect = document.getElementById('budget-fiscal-year');
+  const categorySelect = document.getElementById('budget-category-fiscal-year');
+
+  const selectedYear = currentBudgetTab === 'court' ? fiscalSelect?.value : categorySelect?.value;
+  if (selectedYear) {
+    currentFiscalYear = parseInt(selectedYear);
+    const range = getFiscalYearRange(currentFiscalYear);
+
+    [fiscalSelect, categorySelect].forEach(select => {
+      if (select) select.value = currentFiscalYear;
+    });
+
+    const monthInput = document.getElementById('budget-month');
+    const categoryMonthInput = document.getElementById('budget-category-month');
+
+    [monthInput, categoryMonthInput].forEach(input => {
+      if (input && !range.includes(input.value)) {
+        input.value = range[0];
+      }
+    });
+
+    renderBudget();
+  }
 }
 
 /* ================================================================

@@ -497,6 +497,9 @@
           <!-- コートタブのコンテンツ -->
           <div id="tab-content-court" class="tab-content active">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
+              <label for="budget-fiscal-year" style="font-size:12px;color:var(--tx2)">会計年度</label>
+              <select id="budget-fiscal-year" onchange="switchBudgetFiscalYear()" style="font-size:13px;padding:6px 10px" autocomplete="off"></select>
+
               <label for="budget-month" style="font-size:12px;color:var(--tx2)">対象月</label>
               <input type="month" id="budget-month" name="budget-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
               <button class="btn bs sm" onclick="openBudgetRecordModal()">➕ 予算を追加</button>
@@ -507,6 +510,9 @@
           <!-- 他の科目タブのコンテンツ -->
           <div id="tab-content-category" class="tab-content" style="display:none">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
+              <label for="budget-category-fiscal-year" style="font-size:12px;color:var(--tx2)">会計年度</label>
+              <select id="budget-category-fiscal-year" onchange="switchBudgetFiscalYear()" style="font-size:13px;padding:6px 10px" autocomplete="off"></select>
+
               <label for="budget-category-month" style="font-size:12px;color:var(--tx2)">対象月</label>
               <input type="month" id="budget-category-month" name="budget-category-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
               <button class="btn bs sm" onclick="openBudgetCategoryRecordModal()">➕ 追加</button>
