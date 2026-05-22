@@ -9,6 +9,7 @@ const API_BASE  = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
 const SH = {
   TX:      'transactions',
   MEMBERS: 'members',
+  MEMBER_PERIODS: 'member_periods',
   FEE_REC: 'fee_records',
   PRAC:    'practice_count',
   FEE_SET: 'fee_settings',
@@ -100,7 +101,7 @@ let currentFiscalYear = null;
 ================================================================ */
 let nid = 1;
 let S = {
-  txs:[], members:[], feeRec:{}, pracCount:{}, categories:[],
+  txs:[], members:[], memberPeriods:[], feeRec:{}, pracCount:{}, categories:[],
   fee: { base:{ male:2000, female:2000, manager:1500, exec:500 }, adjs:[] },
   budget: { records:[], settings:[], categoryRecords:[] },
   acct: 'cash',
@@ -301,6 +302,7 @@ async function ensureSheets() {
     const headers = {
       [SH.TX]:      [['id','date','type','acct','toAcct','amount','desc','classification','cat','note']],
       [SH.MEMBERS]: [['id','name','grade','attr']],
+      [SH.MEMBER_PERIODS]: [['id','member_id','start_ym','end_ym','attr','status']],
       [SH.FEE_REC]: [['id','member_id','ym','paid']],
       [SH.PRAC]:    [['id','member_id','ym','count']],
       [SH.FEE_SET]: [['id','attr','amount','type','from_ym','to_ym']],
@@ -320,9 +322,10 @@ async function loadAll() {
   setLoading(true, 'データを読み込み中...');
   await ensureSheets();
 
-  const [txRows, mRows, frRows, pcRows, fsRows, catRows, budgetRecords, budgetSettings, budgetCategoryRecords] = await Promise.all([
+  const [txRows, mRows, mpRows, frRows, pcRows, fsRows, catRows, budgetRecords, budgetSettings, budgetCategoryRecords] = await Promise.all([
     sheetsGet(SH.TX      + '!A2:J'),
     sheetsGet(SH.MEMBERS + '!A2:D'),
+    sheetsGet(SH.MEMBER_PERIODS + '!A2:F'),
     sheetsGet(SH.FEE_REC + '!A2:D'),
     sheetsGet(SH.PRAC    + '!A2:D'),
     sheetsGet(SH.FEE_SET + '!A2:F'),
@@ -347,6 +350,35 @@ async function loadAll() {
     S.txs.reduce((m,t) => Math.max(m,t.id), 0),
     S.members.reduce((m,t) => Math.max(m,t.id), 0)
   ) + 1;
+
+  S.memberPeriods = mpRows
+    .filter(r => r[0] && r[1] && r[2] && r[4])
+    .map(r => ({
+      id:r[0]|0,
+      member_id:r[1]|0,
+      start_ym:String(r[2]),
+      end_ym:String(r[3]||''),
+      attr:String(r[4]),
+      status:String(r[5]||'active')
+    }));
+
+  // 既存部員のマイグレーション：member_periodsにデータがなければ、membersのattrから作成
+  const today = new Date();
+  const currentYM = toYM(today);
+  S.members.forEach(m => {
+    const hasPeriod = S.memberPeriods.some(p => p.member_id === m.id);
+    if (!hasPeriod && m.attr) {
+      // 部員の属性を持つ最初の期間を作成
+      S.memberPeriods.push({
+        id: nid++,
+        member_id: m.id,
+        start_ym: '2024-01',  // デフォルトの開始月
+        end_ym: '',
+        attr: m.attr,
+        status: 'active'
+      });
+    }
+  });
 
   S.feeRec = {};
   frRows.forEach(r => {
@@ -416,6 +448,11 @@ const saveTx = () => saveSheet(async () => {
 
 const saveMembers = () => saveSheet(async () => {
   await sheetsWriteAll(SH.MEMBERS, S.members.map(m => [m.id,m.name,m.grade,m.attr]));
+});
+
+const saveMemberPeriods = () => saveSheet(async () => {
+  await sheetsWriteAll(SH.MEMBER_PERIODS,
+    S.memberPeriods.map(p => [p.id, p.member_id, p.start_ym, p.end_ym || '', p.attr, p.status || 'active']));
 });
 
 const saveFeeRec = () => saveSheet(async () => {
@@ -551,6 +588,24 @@ function calcFee(attr, ym, pc) {
     return Math.min(total, S.fee.maxExec||2500);
   }
   return adj ? adj.amount : (S.fee.base[attr]||0);
+}
+
+function getMemberAttrInMonth(memberId, ym) {
+  const period = S.memberPeriods.find(p =>
+    p.member_id === memberId &&
+    p.start_ym <= ym &&
+    (!p.end_ym || ym <= p.end_ym)
+  );
+  return period ? period.attr : null;
+}
+
+function getMemberStatusInMonth(memberId, ym) {
+  const period = S.memberPeriods.find(p =>
+    p.member_id === memberId &&
+    p.start_ym <= ym &&
+    (!p.end_ym || ym <= p.end_ym)
+  );
+  return period ? period.status : null;
 }
 
 function sortedMembers() {
@@ -1012,20 +1067,31 @@ const attrBadge = attr => badge(attr, ATTR_L[attr]);
 function renderMembers() {
   const fa = document.getElementById('f-attr')?.value  || '';
   const fg = document.getElementById('f-grade')?.value || '';
+  const today = new Date();
+  const currentYm = toYM(today);
+
   let ms   = sortedMembers();
-  if (fa) ms = ms.filter(m => m.attr===fa);
+  if (fa) ms = ms.filter(m => {
+    const attr = getMemberAttrInMonth(m.id, currentYm);
+    return attr === fa;
+  });
   if (fg) ms = ms.filter(m => m.grade===fg);
+
   const tb = document.getElementById('m-tbody');
   if (!tb) return;
   tb.innerHTML = ms.length===0
     ? '<tr><td colspan="5" class="empty">部員がいません</td></tr>'
-    : ms.map(m => `<tr class="member-row" id="member-row-${m.id}">
-        <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
-        <td class="text-center text-secondary-color">${m.grade}</td>
-        <td class="font-semibold">${m.name}</td>
-        <td class="text-center">${attrBadge(m.attr)}</td>
-        <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
-      </tr>`).join('');
+    : ms.map(m => {
+        const currentAttr = getMemberAttrInMonth(m.id, currentYm);
+        const displayAttr = currentAttr || m.attr;
+        return `<tr class="member-row" id="member-row-${m.id}">
+          <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
+          <td class="text-center text-secondary-color">${m.grade}</td>
+          <td class="font-semibold">${m.name}</td>
+          <td class="text-center">${attrBadge(displayAttr)}</td>
+          <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
+        </tr>`;
+      }).join('');
   updateBulkButtons();
 }
 
@@ -1044,22 +1110,30 @@ async function addMember() {
   const lastName  = document.getElementById('ma-last-name').value.trim();
   const grade     = document.getElementById('ma-grade').value;
   const attr      = document.getElementById('ma-attr').value;
+  const startYm   = document.getElementById('ma-start-ym').value;
   if (!firstName) { toast('姓を入力してください'); return; }
   if (!lastName)  { toast('名を入力してください'); return; }
+  if (!startYm)   { toast('入部月を入力してください'); return; }
   const name = `${firstName} ${lastName}`;
   const newMemberId = nid++;
   S.members.push({ id:newMemberId, name, grade, attr });
 
-  if (attr === 'exec') {
-    Object.keys(S.feeRec).forEach(ym => {
-      S.feeRec[ym][newMemberId] = false;
-    });
-  }
+  // 期間情報を追加
+  S.memberPeriods.push({
+    id: nid++,
+    member_id: newMemberId,
+    start_ym: startYm,
+    end_ym: '',
+    attr: attr,
+    status: 'active'
+  });
 
   document.getElementById('ma-first-name').value = '';
   document.getElementById('ma-last-name').value = '';
+  document.getElementById('ma-start-ym').value = '';
   closeM('m-add'); toast('追加しました ✓');
-  render(); await saveMembers();
+  render();
+  await Promise.all([saveMembers(), saveMemberPeriods()]);
 }
 
 function openEdit(id) {
@@ -1069,8 +1143,107 @@ function openEdit(id) {
   document.getElementById('me-first-name').value = firstName;
   document.getElementById('me-last-name').value = lastName.trim();
   document.getElementById('me-grade').value = m.grade;
-  document.getElementById('me-attr').value = m.attr;
+
+  switchEditTab('basic');
+  renderMemberPeriods(id);
   openM('m-edit');
+}
+
+function switchEditTab(tab) {
+  const tabBasic = document.getElementById('tab-basic');
+  const tabPeriods = document.getElementById('tab-periods');
+  const contentBasic = document.getElementById('tab-basic-content');
+  const contentPeriods = document.getElementById('tab-periods-content');
+
+  if (tab === 'basic') {
+    tabBasic?.classList.remove('bs');
+    tabBasic?.classList.add('bp');
+    tabPeriods?.classList.remove('bp');
+    tabPeriods?.classList.add('bs');
+    contentBasic.style.display = 'block';
+    contentPeriods.style.display = 'none';
+  } else {
+    tabBasic?.classList.remove('bp');
+    tabBasic?.classList.add('bs');
+    tabPeriods?.classList.remove('bs');
+    tabPeriods?.classList.add('bp');
+    contentBasic.style.display = 'none';
+    contentPeriods.style.display = 'block';
+  }
+}
+
+function renderMemberPeriods(memberId) {
+  const periods = S.memberPeriods.filter(p => p.member_id === memberId);
+  const el = document.getElementById('periods-list');
+
+  if (periods.length === 0) {
+    el.innerHTML = '<div style="color:var(--tx3);font-size:12px;margin-bottom:12px">期間がありません</div>';
+    return;
+  }
+
+  el.innerHTML = periods.map(p => `
+    <div style="margin-bottom:12px;padding:10px;background:var(--sur);border-radius:6px;border:1px solid var(--bdr)">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${p.start_ym}${p.end_ym ? '〜' + p.end_ym : '〜継続中'}</div>
+          <div style="font-weight:600;margin-bottom:4px">${ATTR_L[p.attr]}</div>
+          <div style="font-size:11px;color:var(--tx3)">${p.status === 'active' ? '在籍中' : '退部'}</div>
+        </div>
+        <button class="btn bd sm" onclick="deleteMemberPeriod(${p.id})">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addMemberPeriod() {
+  const memberId = parseInt(document.getElementById('me-id').value);
+  const startYm = document.getElementById('new-period-start').value;
+  const endYm = document.getElementById('new-period-end').value;
+  const attr = document.getElementById('new-period-attr').value;
+  const status = document.getElementById('new-period-status').value;
+
+  if (!startYm) { toast('開始月を入力してください'); return; }
+  if (endYm && startYm > endYm) { toast('開始月と終了月の順序が正しくありません'); return; }
+
+  // 期間重複チェック
+  const member = S.members.find(m => m.id === memberId);
+  const overlapping = S.memberPeriods.find(p =>
+    p.member_id === memberId &&
+    p.start_ym <= (endYm || startYm) &&
+    (!p.end_ym || p.end_ym >= startYm)
+  );
+
+  if (overlapping && overlapping.id !== undefined) {
+    toast('指定された期間は既存の期間と重複しています');
+    return;
+  }
+
+  S.memberPeriods.push({
+    id: nid++,
+    member_id: memberId,
+    start_ym: startYm,
+    end_ym: endYm || '',
+    attr: attr,
+    status: status
+  });
+
+  document.getElementById('new-period-start').value = '';
+  document.getElementById('new-period-end').value = '';
+  document.getElementById('new-period-attr').value = 'male';
+  document.getElementById('new-period-status').value = 'active';
+
+  toast('期間を追加しました ✓');
+  renderMemberPeriods(memberId);
+  await saveMemberPeriods();
+}
+
+async function deleteMemberPeriod(periodId) {
+  if (!confirm('この期間を削除しますか？')) return;
+  const memberId = parseInt(document.getElementById('me-id').value);
+  S.memberPeriods = S.memberPeriods.filter(p => p.id !== periodId);
+  toast('削除しました');
+  renderMemberPeriods(memberId);
+  await saveMemberPeriods();
 }
 
 async function saveMember() {
@@ -1082,7 +1255,6 @@ async function saveMember() {
   if (!lastName)  { toast('名を入力してください'); return; }
   m.name  = `${firstName} ${lastName}`;
   m.grade = document.getElementById('me-grade').value;
-  m.attr  = document.getElementById('me-attr').value;
   closeM('m-edit'); toast('更新しました ✓');
   render(); await saveMembers();
 }
@@ -1153,7 +1325,6 @@ async function bulkAddMembers() {
   if (!text) { toast('入力してください'); return; }
   const lines = text.split('\n').filter(l => l.trim());
   let added = 0;
-  const newExecIds = [];
 
   // 属性の日本語⇔英語マッピング
   const attrMap = {
@@ -1162,6 +1333,9 @@ async function bulkAddMembers() {
     'マネージャー': 'manager',
     '幹部上': 'exec'
   };
+
+  const today = new Date();
+  const currentYm = toYM(today);
 
   for (const line of lines) {
     const [firstName, lastName, grade, attrInput] = line.split(',').map(s => s.trim());
@@ -1184,20 +1358,25 @@ async function bulkAddMembers() {
     const name = `${firstName} ${lastName}`;
     const newMemberId = nid++;
     S.members.push({ id:newMemberId, name, grade, attr });
-    if (attr === 'exec') newExecIds.push(newMemberId);
+
+    // memberPeriodsに期間を追加
+    S.memberPeriods.push({
+      id: nid++,
+      member_id: newMemberId,
+      start_ym: currentYm,
+      end_ym: '',
+      attr: attr,
+      status: 'active'
+    });
+
     added++;
   }
-
-  newExecIds.forEach(memberId => {
-    Object.keys(S.feeRec).forEach(ym => {
-      S.feeRec[ym][memberId] = false;
-    });
-  });
 
   closeM('m-bulk-add');
   document.getElementById('bulk-members-text').value = '';
   toast(`${added}名追加しました ✓`);
-  render(); await saveMembers();
+  render();
+  await Promise.all([saveMembers(), saveMemberPeriods()]);
 }
 
 function bulkChangeAttr() {
@@ -1265,7 +1444,13 @@ function renderFee() {
   const rec=S.feeRec[ym], pc=S.pracCount[ym];
   let paid=0,unpaid=0,coll=0,rem=0;
   members.forEach(m => {
-    const fee = calcFee(m.attr, ym, pc[m.id]||0);
+    const status = getMemberStatusInMonth(m.id, ym);
+    const attr = getMemberAttrInMonth(m.id, ym);
+
+    // その月に在籍していない、または属性情報がない場合はスキップ
+    if (!status || !attr) return;
+
+    const fee = calcFee(attr, ym, pc[m.id]||0);
     if (rec[m.id]) { paid++; coll+=fee; } else { unpaid++; rem+=fee; }
   });
   document.getElementById('fp-c').textContent = paid;
@@ -1275,9 +1460,15 @@ function renderFee() {
 
   const tb = document.getElementById('fee-tbody'); if (!tb) return;
   tb.innerHTML = members.map((m, idx) => {
+    const status = getMemberStatusInMonth(m.id, ym);
+    const attr = getMemberAttrInMonth(m.id, ym);
+
+    // その月に在籍していない場合は表示しない
+    if (!status || !attr) return '';
+
     const isPaid = !!rec[m.id];
-    const fee    = calcFee(m.attr, ym, pc[m.id]||0);
-    const pi = m.attr==='exec'
+    const fee    = calcFee(attr, ym, pc[m.id]||0);
+    const pi = attr==='exec'
       ? `<input type="number" name="practice-count" class="practice-input" data-member-id="${m.id}" data-month="${ym}" min="0" max="31" value="${pc[m.id]||0}"
            style="width:40px;padding:8px;border:1px solid var(--bdr);border-radius:6px;font-size:16px;text-align:center"
            autocomplete="off"
@@ -1285,7 +1476,7 @@ function renderFee() {
       : `<span class="text-tertiary text-sm text-center">—</span>`;
     return `<tr>
       <td class="text-tertiary">${m.grade}<br><span class="text-amount">${m.name}</span></td>
-      <td>${attrBadge(m.attr)}</td>
+      <td>${attrBadge(attr)}</td>
       <td class="text-center">${pi}</td>
       <td class="text-right amount-text">${fmt(fee)}</td>
       <td class="text-center">

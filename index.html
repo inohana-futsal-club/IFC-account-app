@@ -653,6 +653,10 @@
               <option value="manager">マネージャー</option><option value="exec">幹部上</option>
             </select>
           </div>
+          <div class="fi">
+            <label for="ma-start-ym">入部月</label>
+            <input type="month" id="ma-start-ym" name="member-start-ym" autocomplete="off">
+          </div>
         </div>
         <div class="mact">
           <button class="btn bs" onclick="closeM('m-add')">キャンセル</button>
@@ -666,7 +670,15 @@
       <div class="modal">
         <div class="modal-title">部員を編集</div>
         <input type="hidden" id="me-id">
-        <div class="fg">
+
+        <!-- タブ -->
+        <div style="display:flex;gap:8px;border-bottom:1px solid var(--bdr);margin-bottom:16px;padding-bottom:8px">
+          <button class="btn bp sm active" id="tab-basic" onclick="switchEditTab('basic')" style="font-size:12px">基本情報</button>
+          <button class="btn bs sm" id="tab-periods" onclick="switchEditTab('periods')" style="font-size:12px">期間別属性</button>
+        </div>
+
+        <!-- 基本情報タブ -->
+        <div id="tab-basic-content" class="fg">
           <div class="fi"><label for="me-first-name">姓</label><input type="text" id="me-first-name" name="edit-member-first-name" autocomplete="given-name"></div>
           <div class="fi"><label for="me-last-name">名</label><input type="text" id="me-last-name" name="edit-member-last-name" autocomplete="family-name"></div>
           <div class="fi">
@@ -676,15 +688,43 @@
               <option value="23">23</option><option value="22">22</option><option value="21">21</option>
             </select>
           </div>
-          <div class="fi">
-            <label for="me-attr">属性</label>
-            <select id="me-attr" name="edit-member-attr" autocomplete="off">
-              <option value="male">男プレ</option><option value="female">女プレ</option>
-              <option value="manager">マネージャー</option><option value="exec">幹部上</option>
-            </select>
+        </div>
+
+        <!-- 期間別属性タブ -->
+        <div id="tab-periods-content" style="display:none">
+          <div id="periods-list" style="margin-bottom:16px"></div>
+          <div style="padding:12px;background:var(--sur2);border-radius:8px">
+            <div class="fg mb-12">
+              <div class="fi">
+                <label for="new-period-start">開始月</label>
+                <input type="month" id="new-period-start" autocomplete="off">
+              </div>
+              <div class="fi">
+                <label for="new-period-end">終了月（空白で継続）</label>
+                <input type="month" id="new-period-end" autocomplete="off">
+              </div>
+              <div class="fi">
+                <label for="new-period-attr">属性</label>
+                <select id="new-period-attr" autocomplete="off">
+                  <option value="male">男プレ</option>
+                  <option value="female">女プレ</option>
+                  <option value="manager">マネージャー</option>
+                  <option value="exec">幹部上</option>
+                </select>
+              </div>
+              <div class="fi">
+                <label for="new-period-status">ステータス</label>
+                <select id="new-period-status" autocomplete="off">
+                  <option value="active">在籍中</option>
+                  <option value="retired">退部</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn bp sm" style="width:100%" onclick="addMemberPeriod()">期間を追加</button>
           </div>
         </div>
-        <div class="mact">
+
+        <div class="mact" style="margin-top:16px">
           <button class="btn bd sm" onclick="deleteMember()" style="margin-right:auto">削除</button>
           <button class="btn bs" onclick="closeM('m-edit')">キャンセル</button>
           <button class="btn bp" onclick="saveMember()">保存</button>
