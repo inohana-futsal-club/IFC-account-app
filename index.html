@@ -505,11 +505,27 @@
           <!-- タブ -->
           <div style="display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:12px;padding-bottom:8px">
             <button class="btn bp sm active" id="tab-budget-court" onclick="switchBudgetTab('court')" style="font-size:12px">🏟️ コート</button>
-            <button class="btn bs sm" id="tab-budget-category" onclick="switchBudgetTab('category')" style="font-size:12px">📋 他の科目</button>
+            <button class="btn bs sm" id="tab-budget-category" onclick="switchBudgetTab('category')" style="font-size:12px">📋 その他</button>
           </div>
 
           <!-- コートタブのコンテンツ -->
           <div id="tab-content-court" class="tab-content active">
+            <!-- 月間予算合計 -->
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:16px">
+              <div class="fstat">
+                <div class="fn" id="budget-court-total-court" style="color:var(--red)">¥0</div>
+                <div class="fl">コート代</div>
+              </div>
+              <div class="fstat">
+                <div class="fn" id="budget-category-total-court" style="color:var(--red)">¥0</div>
+                <div class="fl">その他</div>
+              </div>
+              <div class="fstat">
+                <div class="fn" id="budget-grand-total-court" style="color:var(--red);font-weight:700">¥0</div>
+                <div class="fl">合計</div>
+              </div>
+            </div>
+
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
               <label for="budget-month" style="font-size:12px;color:var(--tx2)">対象月</label>
               <input type="month" id="budget-month" name="budget-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
@@ -518,8 +534,24 @@
             <div id="budget-court-content"></div>
           </div>
 
-          <!-- 他の科目タブのコンテンツ -->
+          <!-- その他タブのコンテンツ -->
           <div id="tab-content-category" class="tab-content" style="display:none">
+            <!-- 月間予算合計 -->
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:16px">
+              <div class="fstat">
+                <div class="fn" id="budget-court-total-category" style="color:var(--red)">¥0</div>
+                <div class="fl">コート代</div>
+              </div>
+              <div class="fstat">
+                <div class="fn" id="budget-category-total-category" style="color:var(--red)">¥0</div>
+                <div class="fl">その他</div>
+              </div>
+              <div class="fstat">
+                <div class="fn" id="budget-grand-total-category" style="color:var(--red);font-weight:700">¥0</div>
+                <div class="fl">合計</div>
+              </div>
+            </div>
+
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
               <label for="budget-category-month" style="font-size:12px;color:var(--tx2)">対象月</label>
               <input type="month" id="budget-category-month" name="budget-category-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
@@ -863,10 +895,10 @@
       </div>
     </div>
 
-    <!-- 他の科目予算を追加 -->
+    <!-- その他予算を追加 -->
     <div class="mbg" id="m-budget-category-record">
       <div class="modal">
-        <div class="modal-title" id="budget-cat-record-modal-title">他の科目を追加</div>
+        <div class="modal-title" id="budget-cat-record-modal-title">その他を追加</div>
 
         <!-- タイプ選択 -->
         <fieldset class="fieldset-reset mb-12">

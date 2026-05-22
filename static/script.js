@@ -2221,11 +2221,37 @@ async function deleteBudgetRecord(id) {
 }
 
 function renderBudget() {
+  renderBudgetSummary();
   if (currentBudgetTab === 'court') {
     renderCourtBudget();
   } else if (currentBudgetTab === 'category') {
     renderCategoryBudget();
   }
+}
+
+function renderBudgetSummary() {
+  const ym = document.getElementById('budget-month')?.value || document.getElementById('budget-category-month')?.value;
+  if (!ym) return;
+
+  const range = getFiscalYearRange(currentFiscalYear);
+
+  const courtRecords = S.budget.records.filter(r => r.date.startsWith(ym) && range.some(m => r.date.startsWith(m)));
+  const courtTotal = courtRecords.reduce((s, r) => s + r.amount, 0);
+
+  const categoryRecords = S.budget.categoryRecords.filter(r => r.date.startsWith(ym) && range.some(m => r.date.startsWith(m)));
+  const categoryTotal = categoryRecords.reduce((s, r) => s + r.amount, 0);
+
+  const grandTotal = courtTotal + categoryTotal;
+
+  // コートタブ用
+  document.getElementById('budget-court-total-court').textContent = fmt(courtTotal);
+  document.getElementById('budget-category-total-court').textContent = fmt(categoryTotal);
+  document.getElementById('budget-grand-total-court').textContent = fmt(grandTotal);
+
+  // 他の科目タブ用
+  document.getElementById('budget-court-total-category').textContent = fmt(courtTotal);
+  document.getElementById('budget-category-total-category').textContent = fmt(categoryTotal);
+  document.getElementById('budget-grand-total-category').textContent = fmt(grandTotal);
 }
 
 function renderCourtBudget() {
@@ -2234,28 +2260,6 @@ function renderCourtBudget() {
 
   const range = getFiscalYearRange(currentFiscalYear);
   const records = S.budget.records.filter(r => r.date.startsWith(ym) && range.some(m => r.date.startsWith(m)));
-
-  let totalBudget = 0;
-  records.forEach(r => { totalBudget += r.amount; });
-
-  const totalHours = records.reduce((s, r) => s + r.hours, 0);
-
-  const stats = `
-    <div class="fsrow">
-      <div class="fstat">
-        <div class="fn">${records.length}</div>
-        <div class="fl">登録数</div>
-      </div>
-      <div class="fstat">
-        <div class="fn">${totalHours.toFixed(1)}h</div>
-        <div class="fl">合計時間</div>
-      </div>
-      <div class="fstat">
-        <div class="fn" style="color:var(--red)">${fmt(totalBudget)}</div>
-        <div class="fl">月間予算</div>
-      </div>
-    </div>
-  `;
 
   const tableHtml = records.length === 0
     ? '<div class="empty">予算記録がありません</div>'
@@ -2278,7 +2282,7 @@ function renderCourtBudget() {
         </table></div>
       </div>`;
 
-  document.getElementById('budget-court-content').innerHTML = stats + tableHtml;
+  document.getElementById('budget-court-content').innerHTML = tableHtml;
 }
 
 function renderCategoryBudget() {
@@ -2287,20 +2291,6 @@ function renderCategoryBudget() {
 
   const range = getFiscalYearRange(currentFiscalYear);
   const records = S.budget.categoryRecords.filter(r => r.date.startsWith(ym) && range.some(m => r.date.startsWith(m)));
-  const totalAmount = records.reduce((s, r) => s + r.amount, 0);
-
-  const stats = `
-    <div class="fsrow">
-      <div class="fstat">
-        <div class="fn">${records.length}</div>
-        <div class="fl">登録数</div>
-      </div>
-      <div class="fstat">
-        <div class="fn" style="color:var(--red)">${fmt(totalAmount)}</div>
-        <div class="fl">月間合計</div>
-      </div>
-    </div>
-  `;
 
   const tableHtml = records.length === 0
     ? '<div class="empty">記録がありません</div>'
@@ -2322,7 +2312,7 @@ function renderCategoryBudget() {
         </table></div>
       </div>`;
 
-  document.getElementById('budget-category-content').innerHTML = stats + tableHtml;
+  document.getElementById('budget-category-content').innerHTML = tableHtml;
 }
 
 /* ================================================================
