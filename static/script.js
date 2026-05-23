@@ -588,6 +588,30 @@ function getPrevMonth(ym) {
   return `${year}-${String(month - 1).padStart(2, '0')}`;
 }
 
+function getMemberStatus(memberId, currentYm) {
+  const attr = getMemberAttrInMonth(memberId, currentYm);
+  if (attr) return 'active';  // 現役
+
+  // OB/OG判定：最後の期間の終了月が今月より前の部員
+  const periods = S.memberPeriods.filter(p => p.member_id === memberId);
+  if (periods.length === 0) return 'unknown';  // 期間が登録されていない
+
+  const lastPeriod = periods.sort((a, b) => (b.end_ym || '9999').localeCompare(a.end_ym || '9999'))[0];
+  if (lastPeriod.end_ym && lastPeriod.end_ym < currentYm) {
+    return 'ob';  // OB/OG
+  }
+
+  return 'unknown';
+}
+
+function getMemberLastAttr(memberId) {
+  const periods = S.memberPeriods.filter(p => p.member_id === memberId);
+  if (periods.length === 0) return null;
+
+  const lastPeriod = periods.sort((a, b) => (b.end_ym || b.start_ym).localeCompare(a.end_ym || a.start_ym))[0];
+  return lastPeriod.attr;
+}
+
 function sortedMembers() {
   return [...S.members].sort((a,b) => {
     const gd = GRADE_ORDER[parseInt(a.grade)] - GRADE_ORDER[parseInt(b.grade)];
@@ -1047,30 +1071,46 @@ const attrBadge = attr => badge(attr, ATTR_L[attr]);
 function renderMembers() {
   const fa = document.getElementById('f-attr')?.value  || '';
   const fg = document.getElementById('f-grade')?.value || '';
+  const fs = document.getElementById('f-status')?.value || '';
   const today = new Date();
   const currentYm = toYM(today);
 
   let ms   = sortedMembers();
+
+  // 属性でフィルター（現役のみ）
   if (fa) ms = ms.filter(m => {
     const attr = getMemberAttrInMonth(m.id, currentYm);
     return attr === fa;
   });
+
+  // 学年でフィルター
   if (fg) ms = ms.filter(m => m.grade===fg);
+
+  // ステータスでフィルター（現役/OB）
+  if (fs) ms = ms.filter(m => {
+    const status = getMemberStatus(m.id, currentYm);
+    return status === fs;
+  });
 
   const tb = document.getElementById('m-tbody');
   if (!tb) return;
+
   tb.innerHTML = ms.length===0
-    ? '<tr><td colspan="5" class="empty">部員がいません</td></tr>'
+    ? '<tr><td colspan="6" class="empty">部員がいません</td></tr>'
     : ms.map(m => {
         const currentAttr = getMemberAttrInMonth(m.id, currentYm);
-        // 期間別属性が登録されていない場合は表示しない
-        if (!currentAttr) return '';
+        const status = getMemberStatus(m.id, currentYm);
+        const displayAttr = status === 'active' ? currentAttr : getMemberLastAttr(m.id);
+        const statusBadge = status === 'active'
+          ? '<span style="background:#4CAF50;color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">現役</span>'
+          : '<span style="background:#999;color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">OB/OG</span>';
 
         return `<tr class="member-row" id="member-row-${m.id}">
           <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
           <td class="text-center text-secondary-color">${m.grade}</td>
           <td class="font-semibold">${m.name}</td>
-          <td class="text-center">${attrBadge(currentAttr)}</td>
+          <td class="text-center">${displayAttr ? attrBadge(displayAttr) : '<span style="color:var(--tx3)">-</span>'}</td>
+          <td class="text-center">${statusBadge}</td>
           <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
         </tr>`;
       }).join('');
