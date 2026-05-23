@@ -1139,6 +1139,9 @@ function openEdit(id) {
   const displayAttr = currentAttr || m.attr;
   document.getElementById('me-current-attr').innerHTML = attrBadge(displayAttr);
 
+  // 新規期間追加フォームの初期値を設定
+  document.getElementById('new-period-attr').value = displayAttr;
+
   switchEditTab('basic');
   renderMemberPeriods(id);
   openM('m-edit');
