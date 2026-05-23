@@ -1144,6 +1144,13 @@ function openEdit(id) {
   document.getElementById('me-last-name').value = lastName.trim();
   document.getElementById('me-grade').value = m.grade;
 
+  // 現在の属性を表示
+  const today = new Date();
+  const currentYm = toYM(today);
+  const currentAttr = getMemberAttrInMonth(m.id, currentYm);
+  const displayAttr = currentAttr || m.attr;
+  document.getElementById('me-current-attr').innerHTML = attrBadge(displayAttr);
+
   switchEditTab('basic');
   renderMemberPeriods(id);
   openM('m-edit');
