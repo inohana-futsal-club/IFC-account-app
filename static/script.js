@@ -1067,6 +1067,7 @@ function renderSummaryStatement() {
 ================================================================ */
 const badge     = (cls,lbl) => `<span class="bdg ${cls}">${lbl}</span>`;
 const attrBadge = attr => badge(attr, ATTR_L[attr]);
+const obBadge   = () => badge('ob', 'OB/OG');
 
 function renderMembers() {
   const fa = document.getElementById('f-attr')?.value  || '';
@@ -1101,7 +1102,7 @@ function renderMembers() {
 
         let attrDisplay;
         if (status === 'ob') {
-          attrDisplay = '<span style="background:#999;color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">OB/OG</span>';
+          attrDisplay = obBadge();
         } else if (currentAttr) {
           attrDisplay = attrBadge(currentAttr);
         } else {
