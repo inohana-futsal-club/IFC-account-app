@@ -1080,12 +1080,14 @@ function renderMembers() {
     ? '<tr><td colspan="5" class="empty">部員がいません</td></tr>'
     : ms.map(m => {
         const currentAttr = getMemberAttrInMonth(m.id, currentYm);
-        const displayAttr = currentAttr || m.attr;
+        // 期間別属性が登録されていない場合は表示しない
+        if (!currentAttr) return '';
+
         return `<tr class="member-row" id="member-row-${m.id}">
           <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
           <td class="text-center text-secondary-color">${m.grade}</td>
           <td class="font-semibold">${m.name}</td>
-          <td class="text-center">${attrBadge(displayAttr)}</td>
+          <td class="text-center">${attrBadge(currentAttr)}</td>
           <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
         </tr>`;
       }).join('');
