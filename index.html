@@ -665,37 +665,6 @@
       </div>
     </div>
 
-    <!-- 期間編集 -->
-    <div class="mbg" id="m-edit-period">
-      <div class="modal">
-        <div class="modal-title">期間を編集</div>
-        <input type="hidden" id="ep-period-id">
-        <input type="hidden" id="ep-member-id">
-        <div class="fg">
-          <div class="fi">
-            <label for="ep-start-ym">開始月</label>
-            <input type="month" id="ep-start-ym" autocomplete="off">
-          </div>
-          <div class="fi">
-            <label for="ep-end-ym">終了月（空白で継続）</label>
-            <input type="month" id="ep-end-ym" autocomplete="off">
-          </div>
-          <div class="fi">
-            <label for="ep-attr">属性</label>
-            <select id="ep-attr" autocomplete="off">
-              <option value="male">男プレ</option>
-              <option value="female">女プレ</option>
-              <option value="manager">マネージャー</option>
-              <option value="exec">幹部上</option>
-            </select>
-          </div>
-        </div>
-        <div class="mact">
-          <button class="btn bs" onclick="closeM('m-edit-period')">キャンセル</button>
-          <button class="btn bp" onclick="saveEditPeriod()">保存</button>
-        </div>
-      </div>
-    </div>
     <div class="mbg" id="m-edit">
       <div class="modal">
         <div class="modal-title">部員を編集</div>
@@ -747,7 +716,10 @@
                 </select>
               </div>
             </div>
-            <button class="btn bp sm" style="width:100%" onclick="addMemberPeriod()">期間を追加</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn bp sm" style="flex:1" id="new-period-btn" onclick="addMemberPeriod()">期間を追加</button>
+              <button class="btn bs sm" id="cancel-edit-btn" style="display:none;flex:1" onclick="cancelEditPeriod()">キャンセル</button>
+            </div>
           </div>
         </div>
 

@@ -1200,36 +1200,50 @@ async function addMemberPeriod() {
   const startYm = document.getElementById('new-period-start').value;
   const endYm = document.getElementById('new-period-end').value;
   const attr = document.getElementById('new-period-attr').value;
+  const btn = document.getElementById('new-period-btn');
+  const editingPeriodId = btn.dataset.editingPeriodId ? parseInt(btn.dataset.editingPeriodId) : null;
 
   if (!startYm) { toast('開始月を入力してください'); return; }
   if (endYm && startYm > endYm) { toast('開始月と終了月の順序が正しくありません'); return; }
 
   // 期間重複チェック
-  const member = S.members.find(m => m.id === memberId);
   const overlapping = S.memberPeriods.find(p =>
     p.member_id === memberId &&
+    (!editingPeriodId || p.id !== editingPeriodId) &&
     p.start_ym <= (endYm || startYm) &&
     (!p.end_ym || p.end_ym >= startYm)
   );
 
-  if (overlapping && overlapping.id !== undefined) {
+  if (overlapping) {
     toast('指定された期間は既存の期間と重複しています');
     return;
   }
 
-  S.memberPeriods.push({
-    id: nid++,
-    member_id: memberId,
-    start_ym: startYm,
-    end_ym: endYm || '',
-    attr: attr
-  });
+  if (editingPeriodId) {
+    // 編集モード：既存期間を更新
+    const period = S.memberPeriods.find(p => p.id === editingPeriodId);
+    if (period) {
+      period.start_ym = startYm;
+      period.end_ym = endYm || '';
+      period.attr = attr;
+    }
+    toast('更新しました ✓');
+    cancelEditPeriod();
+  } else {
+    // 追加モード：新しい期間を追加
+    S.memberPeriods.push({
+      id: nid++,
+      member_id: memberId,
+      start_ym: startYm,
+      end_ym: endYm || '',
+      attr: attr
+    });
+    document.getElementById('new-period-start').value = '';
+    document.getElementById('new-period-end').value = '';
+    document.getElementById('new-period-attr').value = 'male';
+    toast('期間を追加しました ✓');
+  }
 
-  document.getElementById('new-period-start').value = '';
-  document.getElementById('new-period-end').value = '';
-  document.getElementById('new-period-attr').value = 'male';
-
-  toast('期間を追加しました ✓');
   renderMemberPeriods(memberId);
   await saveMemberPeriods();
 }
@@ -1247,49 +1261,35 @@ function openEditPeriod(periodId) {
   const period = S.memberPeriods.find(p => p.id === periodId);
   if (!period) return;
 
-  document.getElementById('ep-period-id').value = periodId;
-  document.getElementById('ep-member-id').value = period.member_id;
-  document.getElementById('ep-start-ym').value = period.start_ym;
-  document.getElementById('ep-end-ym').value = period.end_ym || '';
-  document.getElementById('ep-attr').value = period.attr;
+  // 入力欄に値を入力
+  document.getElementById('new-period-start').value = period.start_ym;
+  document.getElementById('new-period-end').value = period.end_ym || '';
+  document.getElementById('new-period-attr').value = period.attr;
 
-  openM('m-edit-period');
+  // 編集モードに切り替え
+  const btn = document.getElementById('new-period-btn');
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  btn.textContent = '保存';
+  btn.dataset.editingPeriodId = periodId;
+  cancelBtn.style.display = 'flex';
+
+  // スクロールして入力欄を見やすく
+  document.getElementById('new-period-start').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('new-period-start').focus();
 }
 
-async function saveEditPeriod() {
-  const periodId = parseInt(document.getElementById('ep-period-id').value);
-  const memberId = parseInt(document.getElementById('ep-member-id').value);
-  const startYm = document.getElementById('ep-start-ym').value;
-  const endYm = document.getElementById('ep-end-ym').value;
-  const attr = document.getElementById('ep-attr').value;
+function cancelEditPeriod() {
+  // 入力欄をクリア
+  document.getElementById('new-period-start').value = '';
+  document.getElementById('new-period-end').value = '';
+  document.getElementById('new-period-attr').value = 'male';
 
-  if (!startYm) { toast('開始月を入力してください'); return; }
-  if (endYm && startYm > endYm) { toast('開始月と終了月の順序が正しくありません'); return; }
-
-  // 期間重複チェック（自身を除く）
-  const overlapping = S.memberPeriods.find(p =>
-    p.member_id === memberId &&
-    p.id !== periodId &&
-    p.start_ym <= (endYm || startYm) &&
-    (!p.end_ym || p.end_ym >= startYm)
-  );
-
-  if (overlapping) {
-    toast('指定された期間は既存の期間と重複しています');
-    return;
-  }
-
-  const period = S.memberPeriods.find(p => p.id === periodId);
-  if (period) {
-    period.start_ym = startYm;
-    period.end_ym = endYm || '';
-    period.attr = attr;
-  }
-
-  closeM('m-edit-period');
-  toast('更新しました ✓');
-  renderMemberPeriods(memberId);
-  await saveMemberPeriods();
+  // 追加モードに戻す
+  const btn = document.getElementById('new-period-btn');
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  btn.textContent = '期間を追加';
+  delete btn.dataset.editingPeriodId;
+  cancelBtn.style.display = 'none';
 }
 
 async function saveMember() {
