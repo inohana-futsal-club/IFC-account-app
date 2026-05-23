@@ -302,7 +302,7 @@ async function ensureSheets() {
     const headers = {
       [SH.TX]:      [['id','date','type','acct','toAcct','amount','desc','classification','cat','note']],
       [SH.MEMBERS]: [['id','name','grade','attr']],
-      [SH.MEMBER_PERIODS]: [['id','member_id','start_ym','end_ym','attr','status']],
+      [SH.MEMBER_PERIODS]: [['id','member_id','start_ym','end_ym','attr']],
       [SH.FEE_REC]: [['id','member_id','ym','paid']],
       [SH.PRAC]:    [['id','member_id','ym','count']],
       [SH.FEE_SET]: [['id','attr','amount','type','from_ym','to_ym']],
@@ -358,8 +358,7 @@ async function loadAll() {
       member_id:r[1]|0,
       start_ym:String(r[2]),
       end_ym:String(r[3]||''),
-      attr:String(r[4]),
-      status:String(r[5]||'active')
+      attr:String(r[4])
     }));
 
   // 既存部員のマイグレーション：member_periodsにデータがなければ、membersのattrから作成
@@ -374,8 +373,7 @@ async function loadAll() {
         member_id: m.id,
         start_ym: '2024-01',  // デフォルトの開始月
         end_ym: '',
-        attr: m.attr,
-        status: 'active'
+        attr: m.attr
       });
     }
   });
@@ -452,7 +450,7 @@ const saveMembers = () => saveSheet(async () => {
 
 const saveMemberPeriods = () => saveSheet(async () => {
   await sheetsWriteAll(SH.MEMBER_PERIODS,
-    S.memberPeriods.map(p => [p.id, p.member_id, p.start_ym, p.end_ym || '', p.attr, p.status || 'active']));
+    S.memberPeriods.map(p => [p.id, p.member_id, p.start_ym, p.end_ym || '', p.attr]));
 });
 
 const saveFeeRec = () => saveSheet(async () => {
@@ -597,15 +595,6 @@ function getMemberAttrInMonth(memberId, ym) {
     (!p.end_ym || ym <= p.end_ym)
   );
   return period ? period.attr : null;
-}
-
-function getMemberStatusInMonth(memberId, ym) {
-  const period = S.memberPeriods.find(p =>
-    p.member_id === memberId &&
-    p.start_ym <= ym &&
-    (!p.end_ym || ym <= p.end_ym)
-  );
-  return period ? period.status : null;
 }
 
 function sortedMembers() {
@@ -1124,8 +1113,7 @@ async function addMember() {
     member_id: newMemberId,
     start_ym: startYm,
     end_ym: '',
-    attr: attr,
-    status: 'active'
+    attr: attr
   });
 
   document.getElementById('ma-first-name').value = '';
@@ -1193,8 +1181,7 @@ function renderMemberPeriods(memberId) {
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div style="flex:1">
           <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${p.start_ym}${p.end_ym ? '〜' + p.end_ym : '〜継続中'}</div>
-          <div style="font-weight:600;margin-bottom:4px">${ATTR_L[p.attr]}</div>
-          <div style="font-size:11px;color:var(--tx3)">${p.status === 'active' ? '在籍中' : '退部'}</div>
+          <div style="font-weight:600">${ATTR_L[p.attr]}</div>
         </div>
         <button class="btn bd sm" onclick="deleteMemberPeriod(${p.id})">削除</button>
       </div>
@@ -1207,7 +1194,6 @@ async function addMemberPeriod() {
   const startYm = document.getElementById('new-period-start').value;
   const endYm = document.getElementById('new-period-end').value;
   const attr = document.getElementById('new-period-attr').value;
-  const status = document.getElementById('new-period-status').value;
 
   if (!startYm) { toast('開始月を入力してください'); return; }
   if (endYm && startYm > endYm) { toast('開始月と終了月の順序が正しくありません'); return; }
@@ -1230,14 +1216,12 @@ async function addMemberPeriod() {
     member_id: memberId,
     start_ym: startYm,
     end_ym: endYm || '',
-    attr: attr,
-    status: status
+    attr: attr
   });
 
   document.getElementById('new-period-start').value = '';
   document.getElementById('new-period-end').value = '';
   document.getElementById('new-period-attr').value = 'male';
-  document.getElementById('new-period-status').value = 'active';
 
   toast('期間を追加しました ✓');
   renderMemberPeriods(memberId);
@@ -1372,8 +1356,7 @@ async function bulkAddMembers() {
       member_id: newMemberId,
       start_ym: currentYm,
       end_ym: '',
-      attr: attr,
-      status: 'active'
+      attr: attr
     });
 
     added++;
@@ -1451,11 +1434,10 @@ function renderFee() {
   const rec=S.feeRec[ym], pc=S.pracCount[ym];
   let paid=0,unpaid=0,coll=0,rem=0;
   members.forEach(m => {
-    const status = getMemberStatusInMonth(m.id, ym);
     const attr = getMemberAttrInMonth(m.id, ym);
 
-    // その月に在籍していない、または属性情報がない場合はスキップ
-    if (!status || !attr) return;
+    // その月に該当する属性がない場合はスキップ（期間外）
+    if (!attr) return;
 
     const fee = calcFee(attr, ym, pc[m.id]||0);
     if (rec[m.id]) { paid++; coll+=fee; } else { unpaid++; rem+=fee; }
@@ -1467,11 +1449,10 @@ function renderFee() {
 
   const tb = document.getElementById('fee-tbody'); if (!tb) return;
   tb.innerHTML = members.map((m, idx) => {
-    const status = getMemberStatusInMonth(m.id, ym);
     const attr = getMemberAttrInMonth(m.id, ym);
 
-    // その月に在籍していない場合は表示しない
-    if (!status || !attr) return '';
+    // その月に該当する属性がない場合は表示しない（期間外）
+    if (!attr) return '';
 
     const isPaid = !!rec[m.id];
     const fee    = calcFee(attr, ym, pc[m.id]||0);
