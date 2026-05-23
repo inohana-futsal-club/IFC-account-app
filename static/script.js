@@ -1186,7 +1186,10 @@ function renderMemberPeriods(memberId) {
           <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${p.start_ym}${p.end_ym ? '〜' + p.end_ym : '〜継続中'}</div>
           <div style="font-weight:600">${ATTR_L[p.attr]}</div>
         </div>
-        <button class="btn bd sm" onclick="deleteMemberPeriod(${p.id})">削除</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn bs sm" onclick="openEditPeriod(${p.id})">編集</button>
+          <button class="btn bd sm" onclick="deleteMemberPeriod(${p.id})">削除</button>
+        </div>
       </div>
     </div>
   `).join('');
@@ -1236,6 +1239,55 @@ async function deleteMemberPeriod(periodId) {
   const memberId = parseInt(document.getElementById('me-id').value);
   S.memberPeriods = S.memberPeriods.filter(p => p.id !== periodId);
   toast('削除しました');
+  renderMemberPeriods(memberId);
+  await saveMemberPeriods();
+}
+
+function openEditPeriod(periodId) {
+  const period = S.memberPeriods.find(p => p.id === periodId);
+  if (!period) return;
+
+  document.getElementById('ep-period-id').value = periodId;
+  document.getElementById('ep-member-id').value = period.member_id;
+  document.getElementById('ep-start-ym').value = period.start_ym;
+  document.getElementById('ep-end-ym').value = period.end_ym || '';
+  document.getElementById('ep-attr').value = period.attr;
+
+  openM('m-edit-period');
+}
+
+async function saveEditPeriod() {
+  const periodId = parseInt(document.getElementById('ep-period-id').value);
+  const memberId = parseInt(document.getElementById('ep-member-id').value);
+  const startYm = document.getElementById('ep-start-ym').value;
+  const endYm = document.getElementById('ep-end-ym').value;
+  const attr = document.getElementById('ep-attr').value;
+
+  if (!startYm) { toast('開始月を入力してください'); return; }
+  if (endYm && startYm > endYm) { toast('開始月と終了月の順序が正しくありません'); return; }
+
+  // 期間重複チェック（自身を除く）
+  const overlapping = S.memberPeriods.find(p =>
+    p.member_id === memberId &&
+    p.id !== periodId &&
+    p.start_ym <= (endYm || startYm) &&
+    (!p.end_ym || p.end_ym >= startYm)
+  );
+
+  if (overlapping) {
+    toast('指定された期間は既存の期間と重複しています');
+    return;
+  }
+
+  const period = S.memberPeriods.find(p => p.id === periodId);
+  if (period) {
+    period.start_ym = startYm;
+    period.end_ym = endYm || '';
+    period.attr = attr;
+  }
+
+  closeM('m-edit-period');
+  toast('更新しました ✓');
   renderMemberPeriods(memberId);
   await saveMemberPeriods();
 }
