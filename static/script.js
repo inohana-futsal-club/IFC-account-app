@@ -597,6 +597,14 @@ function getMemberAttrInMonth(memberId, ym) {
   return period ? period.attr : null;
 }
 
+function getPrevMonth(ym) {
+  const [year, month] = ym.split('-').map(Number);
+  if (month === 1) {
+    return `${year - 1}-12`;
+  }
+  return `${year}-${String(month - 1).padStart(2, '0')}`;
+}
+
 function sortedMembers() {
   return [...S.members].sort((a,b) => {
     const gd = GRADE_ORDER[parseInt(a.grade)] - GRADE_ORDER[parseInt(b.grade)];
@@ -1231,6 +1239,21 @@ async function addMemberPeriod() {
     cancelEditPeriod();
   } else {
     // 追加モード：新しい期間を追加
+    // 新しい期間の開始月より前で、終了月がない期間を自動で終了させる
+    const continuingPeriods = S.memberPeriods.filter(p =>
+      p.member_id === memberId &&
+      p.start_ym < startYm &&
+      !p.end_ym
+    );
+
+    // 最後の継続中の期間を終了させる
+    if (continuingPeriods.length > 0) {
+      const lastContinuingPeriod = continuingPeriods.sort((a, b) => b.start_ym.localeCompare(a.start_ym))[0];
+      const prevMonth = getPrevMonth(startYm);
+      lastContinuingPeriod.end_ym = prevMonth;
+      toast(`${ATTR_L[lastContinuingPeriod.attr]}の終了月を${prevMonth}に自動設定しました`);
+    }
+
     S.memberPeriods.push({
       id: nid++,
       member_id: memberId,
