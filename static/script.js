@@ -1244,21 +1244,21 @@ async function addMemberPeriod() {
   if (!startYm) { toast('開始月を入力してください'); return; }
   if (endYm && startYm > endYm) { toast('開始月と終了月の順序が正しくありません'); return; }
 
-  // 期間重複チェック（自動終了される期間と編集対象を除く）
-  const overlapping = S.memberPeriods.find(p =>
-    p.member_id === memberId &&
-    (!editingPeriodId || p.id !== editingPeriodId) &&
-    p.start_ym <= (endYm || startYm) &&
-    (!p.end_ym || p.end_ym >= startYm)
-  );
-
-  if (overlapping) {
-    toast('指定された期間は既存の期間と重複しています');
-    return;
-  }
-
   if (editingPeriodId) {
     // 編集モード：既存期間を更新
+    // 期間重複チェック（編集対象を除く）
+    const overlapping = S.memberPeriods.find(p =>
+      p.member_id === memberId &&
+      p.id !== editingPeriodId &&
+      p.start_ym <= (endYm || startYm) &&
+      (!p.end_ym || p.end_ym >= startYm)
+    );
+
+    if (overlapping) {
+      toast('指定された期間は既存の期間と重複しています');
+      return;
+    }
+
     const period = S.memberPeriods.find(p => p.id === editingPeriodId);
     if (period) {
       period.start_ym = startYm;
@@ -1275,6 +1275,19 @@ async function addMemberPeriod() {
       p.start_ym < startYm &&
       !p.end_ym
     );
+
+    // 期間重複チェック（自動終了される期間を除く）
+    const overlapping = S.memberPeriods.find(p =>
+      p.member_id === memberId &&
+      !continuingPeriods.some(cp => cp.id === p.id) &&
+      p.start_ym <= (endYm || startYm) &&
+      (!p.end_ym || p.end_ym >= startYm)
+    );
+
+    if (overlapping) {
+      toast('指定された期間は既存の期間と重複しています');
+      return;
+    }
 
     // 最後の継続中の期間を終了させる
     if (continuingPeriods.length > 0) {
