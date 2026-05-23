@@ -768,6 +768,10 @@
       <div class="modal">
         <div class="modal-title">属性を一括変更</div>
         <div style="margin-bottom:16px">
+          <label for="bulk-change-start-ym" style="font-weight:500;display:block;margin-bottom:6px">開始月</label>
+          <input type="month" id="bulk-change-start-ym" style="width:100%;padding:12px;border:1px solid var(--bdr);border-radius:8px;font-size:14px;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:16px">
           <label for="bulk-change-to-attr" style="font-weight:500;display:block;margin-bottom:6px">変更先の属性</label>
           <select id="bulk-change-to-attr" style="width:100%;padding:12px;border:1px solid var(--bdr);border-radius:8px;font-size:14px">
             <option value="male">男プレ</option>
@@ -781,7 +785,7 @@
         </div>
         <div class="mact">
           <button class="btn bs" onclick="closeM('m-bulk-change-attr')">キャンセル</button>
-          <button class="btn bp" onclick="confirmBulkChangeAttr()">変更</button>
+          <button class="btn bp" onclick="confirmBulkChangeAttr()">追加</button>
         </div>
       </div>
     </div>

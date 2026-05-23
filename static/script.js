@@ -301,7 +301,7 @@ async function ensureSheets() {
     });
     const headers = {
       [SH.TX]:      [['id','date','type','acct','toAcct','amount','desc','classification','cat','note']],
-      [SH.MEMBERS]: [['id','name','grade','attr']],
+      [SH.MEMBERS]: [['id','name','grade']],
       [SH.MEMBER_PERIODS]: [['id','member_id','start_ym','end_ym','attr']],
       [SH.FEE_REC]: [['id','member_id','ym','paid']],
       [SH.PRAC]:    [['id','member_id','ym','count']],
@@ -344,7 +344,7 @@ async function loadAll() {
 
   S.members = mRows
     .filter(r => r[0] && r[1])  // id・nameが存在する行のみ
-    .map(r => ({ id:r[0]|0, name:String(r[1]), grade:r[2]||'', attr:r[3]||'male' }));
+    .map(r => ({ id:r[0]|0, name:String(r[1]), grade:r[2]||'' }));
 
   nid = Math.max(
     S.txs.reduce((m,t) => Math.max(m,t.id), 0),
@@ -360,23 +360,6 @@ async function loadAll() {
       end_ym:String(r[3]||''),
       attr:String(r[4])
     }));
-
-  // 既存部員のマイグレーション：member_periodsにデータがなければ、membersのattrから作成
-  const today = new Date();
-  const currentYM = toYM(today);
-  S.members.forEach(m => {
-    const hasPeriod = S.memberPeriods.some(p => p.member_id === m.id);
-    if (!hasPeriod && m.attr) {
-      // 部員の属性を持つ最初の期間を作成
-      S.memberPeriods.push({
-        id: nid++,
-        member_id: m.id,
-        start_ym: '2024-01',  // デフォルトの開始月
-        end_ym: '',
-        attr: m.attr
-      });
-    }
-  });
 
   S.feeRec = {};
   frRows.forEach(r => {
@@ -445,7 +428,7 @@ const saveTx = () => saveSheet(async () => {
 });
 
 const saveMembers = () => saveSheet(async () => {
-  await sheetsWriteAll(SH.MEMBERS, S.members.map(m => [m.id,m.name,m.grade,m.attr]));
+  await sheetsWriteAll(SH.MEMBERS, S.members.map(m => [m.id,m.name,m.grade]));
 });
 
 const saveMemberPeriods = () => saveSheet(async () => {
@@ -1146,11 +1129,13 @@ function openEdit(id) {
   const today = new Date();
   const currentYm = toYM(today);
   const currentAttr = getMemberAttrInMonth(m.id, currentYm);
-  const displayAttr = currentAttr || m.attr;
-  document.getElementById('me-current-attr').innerHTML = attrBadge(displayAttr);
-
-  // 新規期間追加フォームの初期値を設定
-  document.getElementById('new-period-attr').value = displayAttr;
+  if (currentAttr) {
+    document.getElementById('me-current-attr').innerHTML = attrBadge(currentAttr);
+    document.getElementById('new-period-attr').value = currentAttr;
+  } else {
+    document.getElementById('me-current-attr').innerHTML = '<span style="color:var(--tx3)">未設定</span>';
+    document.getElementById('new-period-attr').value = 'male';
+  }
 
   switchEditTab('basic');
   renderMemberPeriods(id);
@@ -1462,14 +1447,43 @@ function bulkChangeAttr() {
 async function confirmBulkChangeAttr() {
   const selected = getSelectedMembers();
   const newAttr = document.getElementById('bulk-change-to-attr').value;
+  const startYm = document.getElementById('bulk-change-start-ym').value;
+
   if (!newAttr) { toast('属性を選択してください'); return; }
+  if (!startYm) { toast('開始月を入力してください'); return; }
+
+  let addedCount = 0;
   selected.forEach(id => {
-    const m = S.members.find(m => m.id===id);
-    if (m) m.attr = newAttr;
+    // 新しい期間の開始月より前で、終了月がない期間を自動で終了させる
+    const continuingPeriods = S.memberPeriods.filter(p =>
+      p.member_id === id &&
+      p.start_ym < startYm &&
+      !p.end_ym
+    );
+
+    if (continuingPeriods.length > 0) {
+      const lastContinuingPeriod = continuingPeriods.sort((a, b) => b.start_ym.localeCompare(a.start_ym))[0];
+      const prevMonth = getPrevMonth(startYm);
+      lastContinuingPeriod.end_ym = prevMonth;
+    }
+
+    // 新しい期間を追加
+    S.memberPeriods.push({
+      id: nid++,
+      member_id: id,
+      start_ym: startYm,
+      end_ym: '',
+      attr: newAttr
+    });
+    addedCount++;
   });
+
   closeM('m-bulk-change-attr');
-  toast(`${selected.length}名の属性を変更しました ✓`);
-  render(); await saveMembers();
+  document.getElementById('bulk-change-start-ym').value = '';
+  document.getElementById('bulk-change-to-attr').value = '';
+  toast(`${addedCount}名の期間を追加しました ✓`);
+  render();
+  await saveMemberPeriods();
 }
 
 async function bulkDelete() {
@@ -1509,7 +1523,10 @@ function renderFee() {
 
   // フィルタリング
   let members = sortedMembers();
-  if (fa) members = members.filter(m => m.attr === fa);
+  if (fa) members = members.filter(m => {
+    const attr = getMemberAttrInMonth(m.id, ym);
+    return attr === fa;
+  });
   if (fg) members = members.filter(m => m.grade === fg);
 
   const rec=S.feeRec[ym], pc=S.pracCount[ym];
@@ -1579,7 +1596,9 @@ async function toggleFee(id, ym) {
 
 function renderExecUnpaid() {
   const el = document.getElementById('exec-unpaid-wrap'); if (!el) return;
-  const execMembers = sortedMembers().filter(m => m.attr==='exec');
+  const today = new Date();
+  const currentYm = toYM(today);
+  const execMembers = sortedMembers().filter(m => getMemberAttrInMonth(m.id, currentYm) === 'exec');
   if (execMembers.length===0) { el.innerHTML='<div class="empty">幹部上の部員がいません</div>'; return; }
 
   const months = [...new Set(Object.keys(S.feeRec))].sort();
