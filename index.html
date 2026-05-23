@@ -339,6 +339,7 @@
             <select id="f-attr" name="filter-attribute" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての属性</option><option value="male">男プレ</option>
               <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
+              <option value="ob">OB/OG</option>
             </select>
             <select id="f-grade" name="filter-grade" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての学年</option>
@@ -349,11 +350,6 @@
               <option value="22">22</option>
               <option value="21">21</option>
             </select>
-            <select id="f-status" name="filter-status" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
-              <option value="">現役＆OB/OG</option>
-              <option value="active">現役のみ</option>
-              <option value="ob">OB/OGのみ</option>
-            </select>
           </div>
           <div class="card" style="padding:0;overflow:hidden">
             <table class="mtbl" style="width:100%">
@@ -362,7 +358,6 @@
                 <col style="width:40px">
                 <col style="width:auto">
                 <col style="width:80px">
-                <col style="width:70px">
                 <col style="width:70px">
               </colgroup>
               <thead>
@@ -373,7 +368,6 @@
                   <th style="text-align:center">学年</th>
                   <th>氏名</th>
                   <th style="text-align:center">属性</th>
-                  <th style="text-align:center">ステータス</th>
                   <th style="text-align:center">編集</th>
                 </tr>
               </thead>

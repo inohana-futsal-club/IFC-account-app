@@ -1071,46 +1071,48 @@ const attrBadge = attr => badge(attr, ATTR_L[attr]);
 function renderMembers() {
   const fa = document.getElementById('f-attr')?.value  || '';
   const fg = document.getElementById('f-grade')?.value || '';
-  const fs = document.getElementById('f-status')?.value || '';
   const today = new Date();
   const currentYm = toYM(today);
 
   let ms   = sortedMembers();
 
-  // 属性でフィルター（現役のみ）
+  // フィルタリング
   if (fa) ms = ms.filter(m => {
-    const attr = getMemberAttrInMonth(m.id, currentYm);
-    return attr === fa;
+    const status = getMemberStatus(m.id, currentYm);
+    if (fa === 'ob') {
+      return status === 'ob';
+    } else {
+      const attr = getMemberAttrInMonth(m.id, currentYm);
+      return attr === fa;
+    }
   });
 
   // 学年でフィルター
   if (fg) ms = ms.filter(m => m.grade===fg);
 
-  // ステータスでフィルター（現役/OB）
-  if (fs) ms = ms.filter(m => {
-    const status = getMemberStatus(m.id, currentYm);
-    return status === fs;
-  });
-
   const tb = document.getElementById('m-tbody');
   if (!tb) return;
 
   tb.innerHTML = ms.length===0
-    ? '<tr><td colspan="6" class="empty">部員がいません</td></tr>'
+    ? '<tr><td colspan="5" class="empty">部員がいません</td></tr>'
     : ms.map(m => {
         const currentAttr = getMemberAttrInMonth(m.id, currentYm);
         const status = getMemberStatus(m.id, currentYm);
-        const displayAttr = status === 'active' ? currentAttr : getMemberLastAttr(m.id);
-        const statusBadge = status === 'active'
-          ? '<span style="background:#4CAF50;color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">現役</span>'
-          : '<span style="background:#999;color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">OB/OG</span>';
+
+        let attrDisplay;
+        if (status === 'ob') {
+          attrDisplay = '<span style="background:#999;color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">OB/OG</span>';
+        } else if (currentAttr) {
+          attrDisplay = attrBadge(currentAttr);
+        } else {
+          attrDisplay = '<span style="color:var(--tx3)">-</span>';
+        }
 
         return `<tr class="member-row" id="member-row-${m.id}">
           <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
           <td class="text-center text-secondary-color">${m.grade}</td>
           <td class="font-semibold">${m.name}</td>
-          <td class="text-center">${displayAttr ? attrBadge(displayAttr) : '<span style="color:var(--tx3)">-</span>'}</td>
-          <td class="text-center">${statusBadge}</td>
+          <td class="text-center">${attrDisplay}</td>
           <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
         </tr>`;
       }).join('');
