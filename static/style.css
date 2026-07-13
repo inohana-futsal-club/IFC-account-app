@@ -662,7 +662,8 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
 ================================================================ */
 
 /* PC: tx-pc-layoutを表示、sp非表示 */
-.tx-pc-layout { display: grid; grid-template-columns: 290px 1fr; gap: 18px; align-items: start; }
+.tx-pc-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
+.tx-pc-layout > .card { position: sticky; top: 16px; }
 .tx-sp-layout { display: none; }
 .fab          { display: none; }
 

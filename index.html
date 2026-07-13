@@ -214,8 +214,11 @@
 
           <!-- スマホ用：取引一覧のみ -->
           <div class="tx-sp-layout">
-            <div class="sh">
-              <div class="st">取引一覧</div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div class="sh">
+                <div class="st">取引一覧</div>
+                <button class="btn bp sm" onclick="openBottomSheet()">＋ 追加</button>
+              </div>
               <div style="display:flex;gap:6px">
                 <select id="f-acct-sp" name="filter-account-sp" onchange="renderTx()" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
                   <option value="">すべて</option><option value="cash">現金</option><option value="bank">銀行</option>

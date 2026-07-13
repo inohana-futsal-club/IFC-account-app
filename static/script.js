@@ -17,6 +17,7 @@ const SH = {
   BUDGET: 'budget_records',
   BUDGET_SETTINGS: 'budget_settings',
   BUDGET_CATEGORY_RECORDS: 'budget_category_records',
+  CARRYOVER: 'carryover_records',
 };
 
 /* ================================================================
@@ -25,6 +26,15 @@ const SH = {
 const ATTR_L     = { male:'男プレ', female:'女プレ', manager:'マネージャー', exec:'幹部上' };
 const ATTR_ORDER = { male:0, female:1, manager:2, exec:3 };
 const GRADE_ORDER= { 26:0,25:1,24:2,23:3,22:4,21:5 };
+
+/* ================================================================
+   UTILITY FUNCTIONS - HTML Escaping
+================================================================ */
+const _ESCAPE_HTML_MAP = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, c => _ESCAPE_HTML_MAP[c]);
+}
 
 /* ================================================================
    UTILITY FUNCTIONS - CSS Helper Functions
@@ -88,6 +98,9 @@ function getAvailableFiscalYears() {
 let accessToken = null;
 let userEmail   = null;
 
+/* シート名 -> 数値sheetId（行削除のbatchUpdateで必要）。ensureSheetsで取得 */
+let sheetIdMap = {};
+
 /* ================================================================
    BUDGET STATE
 ================================================================ */
@@ -101,15 +114,15 @@ let currentFiscalYear = null;
 ================================================================ */
 let nid = 1;
 let S = {
-  txs:[], members:[], memberPeriods:[], feeRec:{}, pracCount:{}, categories:[],
+  txs:[], members:[], memberPeriods:[], feeRec:{}, feeRecs:[], pracCount:{}, pracCounts:[], categories:[],
   fee: { base:{ male:2000, female:2000, manager:1500, exec:500 }, adjs:[] },
   budget: { records:[], settings:[], categoryRecords:[] },
+  carryoverRecords: [],
   acct: 'cash',
   type: 'income',
 };
 let trendChart    = null;
 let currentLedger = 'cash';
-let isSaving      = false;
 
 /* ================================================================
    GOOGLE SIGN-IN
@@ -267,14 +280,6 @@ async function sheetsClear(sheetName) {
   if (!res.ok) throw new Error(`Sheets CLEAR error: ${res.status}`);
 }
 
-async function sheetsWriteAll(sheetName, rows) {
-  if (rows.length === 0) {
-    await sheetsClear(sheetName);
-  } else {
-    await sheetsUpdate(`${sheetName}!A2:Z`, [rows].flat().length > 0 ? rows : [[]]);
-  }
-}
-
 async function sheetsUpdate(range, values) {
   const url = `${API_BASE}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
   const res = await fetch(url, {
@@ -285,20 +290,67 @@ async function sheetsUpdate(range, values) {
   if (!res.ok) throw new Error(`Sheets UPDATE error: ${res.status}`);
 }
 
+/* ================================================================
+   行単位のCRUD
+   前提: S.txs / S.members などの配列の並び順は、シートの行順と常に一致させる
+   （並べ替えて表示する際は必ずコピーを作る。配列自体はappend順を保つ）。
+   これにより「idから配列のindexを探す → row = index + 2」で対象行を特定でき、
+   保存のたびにシート全体を洗い替えなくて済む（＝他ユーザーの同時編集を上書きしない）。
+================================================================ */
+function colLetter(colCount) {
+  return String.fromCharCode(64 + colCount); // このアプリの全シートは列数<=26
+}
+
+async function sheetsUpdateRow(sheetName, rowNum, values) {
+  const range = `${sheetName}!A${rowNum}:${colLetter(values.length)}${rowNum}`;
+  await sheetsUpdate(range, [values]);
+}
+
+async function sheetsDeleteRow(sheetName, rowNum) {
+  await sheetsDeleteRows(sheetName, [rowNum]);
+}
+
+// rowNums: 1始まりの行番号（順不同可）。降順に並べ替えてから削除することで、
+// 1回のbatchUpdate内で後続の削除対象行の番号がズレないようにする
+async function sheetsDeleteRows(sheetName, rowNums) {
+  if (rowNums.length === 0) return;
+  const sheetId = sheetIdMap[sheetName];
+  if (sheetId === undefined) throw new Error(`unknown sheet: ${sheetName}`);
+  const requests = [...rowNums].sort((a,b) => b - a).map(rowNum => ({
+    deleteDimension: {
+      range: { sheetId, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum },
+    },
+  }));
+  const res = await fetch(`${API_BASE}:batchUpdate`, {
+    method: 'POST',
+    headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+    body: JSON.stringify({ requests }),
+  });
+  if (!res.ok) throw new Error(`Sheets DELETE ROW error: ${res.status}`);
+}
+
 async function ensureSheets() {
   const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`,
     { headers:{ Authorization:`Bearer ${accessToken}` } });
-  if (!res.ok) throw new Error('スプレッドシートにアクセスできません');
+  if (!res.ok) {
+    const err = new Error('スプレッドシートにアクセスできません');
+    // 403/404はアカウントにシートの閲覧・編集権限がないケースがほとんど
+    err.isAccessDenied = res.status === 403 || res.status === 404;
+    throw err;
+  }
   const meta     = await res.json();
+  meta.sheets.forEach(s => { sheetIdMap[s.properties.title] = s.properties.sheetId; });
   const existing = meta.sheets.map(s => s.properties.title);
   const toAdd    = Object.values(SH).filter(n => !existing.includes(n));
 
   if (toAdd.length > 0) {
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+    const addRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
       method: 'POST',
       headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
       body: JSON.stringify({ requests: toAdd.map(title => ({ addSheet:{ properties:{ title } } })) }),
     });
+    const addJson = await addRes.json();
+    addJson.replies.forEach((r, i) => { sheetIdMap[toAdd[i]] = r.addSheet.properties.sheetId; });
     const headers = {
       [SH.TX]:      [['id','date','type','acct','toAcct','amount','desc','classification','cat','note']],
       [SH.MEMBERS]: [['id','name','grade']],
@@ -322,7 +374,7 @@ async function loadAll() {
   setLoading(true, 'データを読み込み中...');
   await ensureSheets();
 
-  const [txRows, mRows, mpRows, frRows, pcRows, fsRows, catRows, budgetRecords, budgetSettings, budgetCategoryRecords] = await Promise.all([
+  const [txRows, mRows, mpRows, frRows, pcRows, fsRows, catRows, budgetRecords, budgetSettings, budgetCategoryRecords, carryoverRows] = await Promise.all([
     sheetsGet(SH.TX      + '!A2:J'),
     sheetsGet(SH.MEMBERS + '!A2:D'),
     sheetsGet(SH.MEMBER_PERIODS + '!A2:F'),
@@ -333,6 +385,7 @@ async function loadAll() {
     sheetsGet(SH.BUDGET + '!A2:H'),
     sheetsGet(SH.BUDGET_SETTINGS + '!A2:E'),
     sheetsGet(SH.BUDGET_CATEGORY_RECORDS + '!A2:G'),
+    sheetsGet(SH.CARRYOVER + '!A2:E'),
   ]);
 
   S.txs = txRows
@@ -346,11 +399,6 @@ async function loadAll() {
     .filter(r => r[0] && r[1])  // id・nameが存在する行のみ
     .map(r => ({ id:r[0]|0, name:String(r[1]), grade:r[2]||'' }));
 
-  nid = Math.max(
-    S.txs.reduce((m,t) => Math.max(m,t.id), 0),
-    S.members.reduce((m,t) => Math.max(m,t.id), 0)
-  ) + 1;
-
   S.memberPeriods = mpRows
     .filter(r => r[0] && r[1] && r[2] && r[4])
     .map(r => ({
@@ -361,16 +409,22 @@ async function loadAll() {
       attr:String(r[4])
     }));
 
+  // S.feeRec / S.pracCount は画面表示・計算用の{ym: {member_id: 値}}のネスト構造。
+  // S.feeRecs / S.pracCounts はシートの行順を保った配列で、個別の行のUPDATE/APPENDに使う。
   S.feeRec = {};
-  frRows.forEach(r => {
-    if (!S.feeRec[r[2]]) S.feeRec[r[2]] = {};
-    S.feeRec[r[2]][r[1]|0] = r[3]==='true' || r[3]===true || r[3]==='TRUE';
+  S.feeRecs = frRows.map(r => {
+    const ym = String(r[2]), mid = r[1]|0, paid = r[3]==='true' || r[3]===true || r[3]==='TRUE';
+    if (!S.feeRec[ym]) S.feeRec[ym] = {};
+    S.feeRec[ym][mid] = paid;
+    return { id:r[0]|0, member_id:mid, ym, paid };
   });
 
   S.pracCount = {};
-  pcRows.forEach(r => {
-    if (!S.pracCount[r[2]]) S.pracCount[r[2]] = {};
-    S.pracCount[r[2]][r[1]|0] = r[3]|0;
+  S.pracCounts = pcRows.map(r => {
+    const ym = String(r[2]), mid = r[1]|0, count = r[3]|0;
+    if (!S.pracCount[ym]) S.pracCount[ym] = {};
+    S.pracCount[ym][mid] = count;
+    return { id:r[0]|0, member_id:mid, ym, count };
   });
 
   S.fee = { base:{ male:2000, female:2000, manager:1500, exec:500 }, maxExec:2500, adjs:[] };
@@ -379,7 +433,7 @@ async function loadAll() {
     else if (r[3]==='maxExec') S.fee.maxExec = r[2]|0;
     else S.fee.adjs.push({ id:r[0]|0, attr:r[1], amount:r[2]|0, from:r[4], to:r[5] });
   });
-  if (fsRows.length === 0) await saveFeeSettings();
+  if (fsRows.length === 0) await saveFeeBase();
 
   S.categories = catRows
     .filter(r => r[0] && r[1] && r[2])
@@ -407,69 +461,107 @@ async function loadAll() {
       amount:r[5]|0, remarks:r[6]||''
     }));
 
+  S.carryoverRecords = carryoverRows
+    .filter(r => r[0] && r[1])
+    .map(r => ({
+      fiscal_year: String(r[0]),
+      date: String(r[1]),
+      cash: r[2]|0,
+      bank: r[3]|0,
+      note: r[4]||'前年度繰越金'
+    }));
+
+  // idを主キーとして行を探すエンティティすべてを反映してnidを初期化する
+  // （txs/membersだけを見ていると、他エンティティで既に使われているidと衝突し、
+  //   誤った行を更新・削除してしまう恐れがある）
+  const maxIdIn = arr => arr.reduce((m,x) => Math.max(m, x.id), 0);
+  nid = Math.max(
+    maxIdIn(S.txs),
+    maxIdIn(S.members),
+    maxIdIn(S.memberPeriods),
+    maxIdIn(S.feeRecs),
+    maxIdIn(S.pracCounts),
+    maxIdIn(S.fee.adjs),
+    maxIdIn(S.budget.records),
+    maxIdIn(S.budget.settings),
+    maxIdIn(S.budget.categoryRecords),
+  ) + 1;
+
   setLoading(false);
 }
 
 /* ================================================================
    SAVE TO SHEETS
 ================================================================ */
-async function saveSheet(fn) {
-  if (isSaving) return;
-  isSaving = true;
+// 保存を直列キューで実行する。同時に複数の保存が発生しても、後発の保存が
+// 「実行中だから」と無視されて消えることがないようにする（以前は isSaving フラグで
+// 実行中の呼び出しをまるごと捨てており、連続操作時に保存が抜け落ちることがあった）
+let saveQueue = Promise.resolve();
+let pendingSaves = 0;
+
+function saveSheet(fn) {
+  pendingSaves++;
   showSaveInd(true);
-  try { await fn(); }
-  catch(e) { console.error(e); toast('保存に失敗しました。再試行してください。'); }
-  finally { isSaving = false; showSaveInd(false); }
+  const run = saveQueue.then(async () => {
+    try { await fn(); }
+    catch(e) { console.error(e); toast('保存に失敗しました。再試行してください。'); }
+    finally {
+      pendingSaves--;
+      if (pendingSaves === 0) showSaveInd(false);
+    }
+  });
+  saveQueue = run;
+  return run;
 }
 
-const saveTx = () => saveSheet(async () => {
-  await sheetsWriteAll(SH.TX,
-    S.txs.map(t => [t.id,t.date,t.type,t.acct,t.toAcct||'',t.amount,t.desc,t.classification||'',t.cat,t.note||'']));
-});
+function txToRow(t) {
+  return [t.id, t.date, t.type, t.acct, t.toAcct||'', t.amount, t.desc, t.classification||'', t.cat, t.note||''];
+}
 
-const saveMembers = () => saveSheet(async () => {
-  await sheetsWriteAll(SH.MEMBERS, S.members.map(m => [m.id,m.name,m.grade]));
-});
+function memberToRow(m) {
+  return [m.id, m.name, m.grade];
+}
 
-const saveMemberPeriods = () => saveSheet(async () => {
-  await sheetsWriteAll(SH.MEMBER_PERIODS,
-    S.memberPeriods.map(p => [p.id, p.member_id, p.start_ym, p.end_ym || '', p.attr]));
-});
+function periodToRow(p) {
+  return [p.id, p.member_id, p.start_ym, p.end_ym || '', p.attr];
+}
 
-const saveFeeRec = () => saveSheet(async () => {
-  const rows = [];
-  let rid = 1;
-  Object.entries(S.feeRec).forEach(([ym,recs]) =>
-    Object.entries(recs).forEach(([mid,paid]) => rows.push([rid++, mid, ym, paid])));
-  await sheetsWriteAll(SH.FEE_REC, rows);
-});
+function feeRecToRow(r) {
+  return [r.id, r.member_id, r.ym, r.paid];
+}
 
-const savePrac = () => saveSheet(async () => {
-  const rows = [];
-  let rid = 1;
-  Object.entries(S.pracCount).forEach(([ym,recs]) =>
-    Object.entries(recs).forEach(([mid,cnt]) => rows.push([rid++, mid, ym, cnt])));
-  await sheetsWriteAll(SH.PRAC, rows);
-});
+function pracCountToRow(r) {
+  return [r.id, r.member_id, r.ym, r.count];
+}
 
-const saveFeeSettings = () => saveSheet(async () => {
+// FEE_SETシートはヘッダーの次、行2〜6が固定で「基本額×4属性 + 幹部上の最大月額」、
+// 行7以降がユーザーが増減する一時調整(adjs)というレイアウト。
+// 固定部分は範囲更新、adjsは追加・削除それぞれ該当行だけを操作する（シート全体は洗い替えない）
+function feeBaseRows() {
   const rows = [];
   let rid = 1;
   Object.entries(S.fee.base).forEach(([attr,amt]) => rows.push([rid++,attr,amt,'base','','']));
   rows.push([rid++,'exec',S.fee.maxExec,'maxExec','','']);
-  S.fee.adjs.forEach(a => rows.push([a.id,a.attr,a.amount,'adj',a.from,a.to]));
-  await sheetsWriteAll(SH.FEE_SET, rows);
-});
+  return rows;
+}
 
-const saveBudgetRecords = () => saveSheet(async () => {
-  await sheetsWriteAll(SH.BUDGET,
-    S.budget.records.map(r => [r.id, r.date, r.court_name, r.court_condition, r.hours, r.price_per_hour, r.amount, r.remarks||'']));
-});
+function adjToRow(a) {
+  return [a.id, a.attr, a.amount, 'adj', a.from, a.to];
+}
 
-const saveBudgetSettings = () => saveSheet(async () => {
-  await sheetsWriteAll(SH.BUDGET_SETTINGS,
-    S.budget.settings.map(s => [s.id, s.court_name, s.court_condition, s.price_per_hour, s.remarks||'']));
-});
+const FEE_SET_ADJ_START_ROW = 7; // ヘッダー(1) + 固定5行(2〜6) の次
+
+function saveFeeBase() {
+  return saveSheet(() => sheetsUpdate(`${SH.FEE_SET}!A2:F6`, feeBaseRows()));
+}
+
+function budgetRecordToRow(r) {
+  return [r.id, r.date, r.court_name, r.court_condition, r.hours, r.price_per_hour, r.amount, r.remarks||''];
+}
+
+function budgetSettingToRow(s) {
+  return [s.id, s.court_name, s.court_condition, s.price_per_hour, s.remarks||''];
+}
 
 function showSaveInd(on) {
   const saveInd = document.getElementById('save-ind');
@@ -501,7 +593,16 @@ async function startApp() {
     initializeCategories();
   } catch(e) {
     console.error(e);
-    setLoading(true, 'データ読み込みに失敗しました。ページを再読み込みしてください。');
+    if (e.isAccessDenied) {
+      // 権限のないアカウントなので、別アカウントで選び直せるようログイン画面に戻す
+      sessionStorage.removeItem('gapi_token');
+      sessionStorage.removeItem('pending_email');
+      accessToken = null;
+      showLoginScreen();
+      showLoginError();
+    } else {
+      setLoading(true, 'データ読み込みに失敗しました。ページを再読み込みしてください。');
+    }
   }
 }
 
@@ -710,7 +811,7 @@ function txRow(t) {
     acctBadge = `<span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span>`;
     amtStr    = (t.type==='income'?'+':'-') + fmt(t.amount);
     amtCls    = t.type;
-    catLabel  = t.classification ? `${t.classification} > ${t.cat}` : t.cat;
+    catLabel  = t.classification ? `${escapeHtml(t.classification)} > ${escapeHtml(t.cat)}` : escapeHtml(t.cat);
   }
   // 日付を m/d 形式に変換
   const dateParts = t.date.slice(5).split('-');
@@ -725,25 +826,12 @@ function txRow(t) {
       <span class="txcat">${catLabel}</span>
     </div>
     <div class="txr-row2">
-      <span class="txdesc">${t.desc}</span>
+      <span class="txdesc">${escapeHtml(t.desc)}</span>
       <span class="txamt ${amtCls}">${amtStr}</span>
       <button class="btn bs sm btn-sm-custom flex-shrink" onclick="openEditTx(${t.id})">編集</button>
       <button class="btn bd sm btn-sm-custom flex-shrink" onclick="delTx(${t.id})">削除</button>
     </div>
   </div>`;
-}
-
-function renderTx() {
-  const fa = document.getElementById('f-acct')?.value || '';
-  const ft = document.getElementById('f-type')?.value || '';
-  let txs  = [...S.txs].sort((a,b) => b.date.localeCompare(a.date));
-  if (fa) txs = txs.filter(t => t.acct===fa || (t.type==='transfer' && t.toAcct===fa));
-  if (ft) txs = txs.filter(t => t.type===ft);
-  const el = document.getElementById('tx-list');
-  if (!el) return;
-  el.innerHTML = txs.length===0
-    ? '<div class="empty">取引がありません</div>'
-    : txs.map(txRow).join('');
 }
 
 /* ================================================================
@@ -761,7 +849,7 @@ function setType(t) {
     const txCls = document.getElementById('tx-cls');
     if (txCls) {
       const classifications = [...new Set(S.categories.filter(c => c.type === t).map(c => c.classification))];
-      txCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+      txCls.innerHTML = classifications.map((cls, idx) => `<option value="${escapeHtml(cls)}" ${idx===0 ? 'selected' : ''}>${escapeHtml(cls)}</option>`).join('');
       updateTxCategories();
     }
   }
@@ -781,7 +869,7 @@ function initializeCategories() {
   const txCls = document.getElementById('tx-cls');
   if (txCls) {
     const classifications = [...new Set(S.categories.filter(c => c.type === 'income').map(c => c.classification))];
-    txCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+    txCls.innerHTML = classifications.map((cls, idx) => `<option value="${escapeHtml(cls)}" ${idx===0 ? 'selected' : ''}>${escapeHtml(cls)}</option>`).join('');
     updateTxCategories();
   }
 
@@ -789,7 +877,7 @@ function initializeCategories() {
   const bsCls = document.getElementById('bs-cls');
   if (bsCls) {
     const classifications = [...new Set(S.categories.filter(c => c.type === 'income').map(c => c.classification))];
-    bsCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+    bsCls.innerHTML = classifications.map((cls, idx) => `<option value="${escapeHtml(cls)}" ${idx===0 ? 'selected' : ''}>${escapeHtml(cls)}</option>`).join('');
     updateBsCategories();
   }
 
@@ -797,7 +885,7 @@ function initializeCategories() {
   const etxCls = document.getElementById('etx-cls');
   if (etxCls) {
     const classifications = [...new Set(S.categories.filter(c => c.type === 'income').map(c => c.classification))];
-    etxCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+    etxCls.innerHTML = classifications.map((cls, idx) => `<option value="${escapeHtml(cls)}" ${idx===0 ? 'selected' : ''}>${escapeHtml(cls)}</option>`).join('');
   }
 }
 
@@ -806,7 +894,7 @@ function updateTxCategories() {
   const cats = S.categories.filter(c => c.type === S.type && c.classification === cls).sort((a, b) => a.order - b.order);
   const catSelect = document.getElementById('tx-cat');
   if (catSelect) {
-    catSelect.innerHTML = cats.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+    catSelect.innerHTML = cats.map(c => `<option value="${escapeHtml(c.category)}">${escapeHtml(c.category)}</option>`).join('');
   }
 }
 
@@ -815,7 +903,7 @@ function updateBsCategories() {
   const cats = S.categories.filter(c => c.type === S.type && c.classification === cls).sort((a, b) => a.order - b.order);
   const catSelect = document.getElementById('bs-cat');
   if (catSelect) {
-    catSelect.innerHTML = cats.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+    catSelect.innerHTML = cats.map(c => `<option value="${escapeHtml(c.category)}">${escapeHtml(c.category)}</option>`).join('');
   }
 }
 
@@ -824,7 +912,7 @@ function updateEditCategories() {
   const cats = S.categories.filter(c => c.type === S.type && c.classification === cls).sort((a, b) => a.order - b.order);
   const catSelect = document.getElementById('etx-cat');
   if (catSelect) {
-    catSelect.innerHTML = cats.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+    catSelect.innerHTML = cats.map(c => `<option value="${escapeHtml(c.category)}">${escapeHtml(c.category)}</option>`).join('');
   }
 }
 
@@ -832,6 +920,7 @@ function updateEditCategories() {
    ADD / DELETE TX
 ================================================================ */
 async function addTx() {
+  let t;
   if (S.type==='transfer') {
     const date   = document.getElementById('tr-date').value;
     const amount = parseInt(document.getElementById('tr-amt').value);
@@ -842,7 +931,8 @@ async function addTx() {
     if (!date)           { toast('日付を入力してください'); return; }
     if (!amount||amount<=0) { toast('金額を正しく入力してください'); return; }
     if (from===to)       { toast('移動元と移動先が同じです'); return; }
-    S.txs.push({ id:nid++, date, type:'transfer', acct:from, toAcct:to, amount, desc, cat:'振替', note });
+    t = { id:nid++, date, type:'transfer', acct:from, toAcct:to, amount, desc, cat:'振替', note };
+    S.txs.push(t);
     ['tr-amt','tr-desc','tr-note'].forEach(id => document.getElementById(id).value='');
   } else {
     const date   = document.getElementById('tx-date').value;
@@ -854,12 +944,13 @@ async function addTx() {
     if (!date)           { toast('日付を入力してください'); return; }
     if (!amount||amount<=0) { toast('金額を正しく入力してください'); return; }
     if (!desc)           { toast('摘要を入力してください'); return; }
-    S.txs.push({ id:nid++, date, type:S.type, acct:S.acct, amount, desc, classification, cat, note });
+    t = { id:nid++, date, type:S.type, acct:S.acct, amount, desc, classification, cat, note };
+    S.txs.push(t);
     ['tx-amt','tx-desc','tx-note'].forEach(id => document.getElementById(id).value='');
   }
   toast('追加しました ✓');
   render();
-  await saveTx();
+  await saveSheet(() => sheetsAppend(SH.TX, [txToRow(t)]));
 }
 
 function openEditTx(id) {
@@ -894,7 +985,7 @@ function openEditTx(id) {
     // 科目分類と科目
     const etxCls = document.getElementById('etx-cls');
     const classifications = [...new Set(S.categories.filter(c => c.type === t.type).map(c => c.classification))];
-    etxCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+    etxCls.innerHTML = classifications.map((cls, idx) => `<option value="${escapeHtml(cls)}" ${idx===0 ? 'selected' : ''}>${escapeHtml(cls)}</option>`).join('');
     etxCls.value = t.classification || classifications[0];
     updateEditCategories();
     const catSelect = document.getElementById('etx-cat');
@@ -934,14 +1025,16 @@ async function saveEditTx() {
   closeM('m-edit-tx');
   toast('更新しました ✓');
   render();
-  await saveTx();
+  const row = S.txs.findIndex(x => x.id === id) + 2;
+  await saveSheet(() => sheetsUpdateRow(SH.TX, row, txToRow(t)));
 }
 
 async function delTx(id) {
   if (!confirm('この取引を削除しますか？')) return;
+  const row = S.txs.findIndex(t => t.id === id) + 2;
   S.txs = S.txs.filter(t => t.id!==id);
   render();
-  await saveTx();
+  await saveSheet(() => sheetsDeleteRow(SH.TX, row));
   toast('削除しました');
 }
 
@@ -979,8 +1072,8 @@ function renderCashLedger(acct, title) {
     }
     rows += `<tr>
       <td class="num">${t.date.replace(/-/g, '/')}</td>
-      <td>${t.cat||'—'}</td>
-      <td>${label}</td>
+      <td>${escapeHtml(t.cat)||'—'}</td>
+      <td>${escapeHtml(label)}</td>
       <td class="num text-income">${inAmt?fmtN(inAmt):''}</td>
       <td class="num text-expense">${outAmt?fmtN(outAmt):''}</td>
       <td class="num ${bal>=0?'bal-pos':'bal-neg'}">${fmtN(bal)}</td>
@@ -1017,15 +1110,15 @@ function renderCatLedger() {
       const amt = t.type==='income' ? t.amount : -t.amount;
       total += amt;
       rows += `<tr>
-        <td class="num">${t.date.replace(/-/g, '/')}</td><td>${t.desc}</td>
-        <td class="num text-secondary">${t.classification} > ${t.cat}</td>
+        <td class="num">${t.date.replace(/-/g, '/')}</td><td>${escapeHtml(t.desc)}</td>
+        <td class="num text-secondary">${escapeHtml(t.classification)} > ${escapeHtml(t.cat)}</td>
         <td><span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span></td>
         <td class="num ${t.type==='income'?'text-income':'text-expense'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td>
       </tr>`;
     });
     html += `<div class="card mb-10 card-no-pad overflow-hidden">
       <div class="flex flex-between card-header">
-        <span>${cls}</span>
+        <span>${escapeHtml(cls)}</span>
         <span class="number-mono ${total>=0?'text-income':'text-expense'}">${total>=0?'+':''}${fmtN(total)}</span>
       </div>
       <div class="overflow-x-auto"><table class="ltbl">
@@ -1044,9 +1137,9 @@ function renderSummaryStatement() {
     else                    { catExp[t.cat]=(catExp[t.cat]||0)+t.amount; expTotal+=t.amount; }
   });
   const incRows = Object.keys(catInc).sort().map(c =>
-    `<tr><td style="padding-left:24px">${c}</td><td class="num text-income">${fmtN(catInc[c])}</td></tr>`).join('');
+    `<tr><td style="padding-left:24px">${escapeHtml(c)}</td><td class="num text-income">${fmtN(catInc[c])}</td></tr>`).join('');
   const expRows = Object.keys(catExp).sort().map(c =>
-    `<tr><td class="pl-24">${c}</td><td class="num text-expense">${fmtN(catExp[c])}</td></tr>`).join('');
+    `<tr><td class="pl-24">${escapeHtml(c)}</td><td class="num text-expense">${fmtN(catExp[c])}</td></tr>`).join('');
   const net = incTotal - expTotal;
   return `<div class="card card-no-pad overflow-hidden">
     <div class="card-header">収支計算書（全期間）</div>
@@ -1112,7 +1205,7 @@ function renderMembers() {
         return `<tr class="member-row" id="member-row-${m.id}">
           <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
           <td class="text-center text-secondary-color">${m.grade}</td>
-          <td class="font-semibold">${m.name}</td>
+          <td class="font-semibold">${escapeHtml(m.name)}</td>
           <td class="text-center">${attrDisplay}</td>
           <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
         </tr>`;
@@ -1141,23 +1234,22 @@ async function addMember() {
   if (!startYm)   { toast('入部月を入力してください'); return; }
   const name = `${firstName} ${lastName}`;
   const newMemberId = nid++;
-  S.members.push({ id:newMemberId, name, grade, attr });
+  const m = { id:newMemberId, name, grade, attr };
+  S.members.push(m);
 
   // 期間情報を追加
-  S.memberPeriods.push({
-    id: nid++,
-    member_id: newMemberId,
-    start_ym: startYm,
-    end_ym: '',
-    attr: attr
-  });
+  const p = { id: nid++, member_id: newMemberId, start_ym: startYm, end_ym: '', attr: attr };
+  S.memberPeriods.push(p);
 
   document.getElementById('ma-first-name').value = '';
   document.getElementById('ma-last-name').value = '';
   document.getElementById('ma-start-ym').value = '';
   closeM('m-add'); toast('追加しました ✓');
   render();
-  await Promise.all([saveMembers(), saveMemberPeriods()]);
+  await Promise.all([
+    saveSheet(() => sheetsAppend(SH.MEMBERS, [memberToRow(m)])),
+    saveSheet(() => sheetsAppend(SH.MEMBER_PERIODS, [periodToRow(p)])),
+  ]);
 }
 
 function openEdit(id) {
@@ -1267,6 +1359,12 @@ async function addMemberPeriod() {
     }
     toast('更新しました ✓');
     cancelEditPeriod();
+    renderMemberPeriods(memberId);
+    if (period) {
+      const row = S.memberPeriods.findIndex(p => p.id === editingPeriodId) + 2;
+      await saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, row, periodToRow(period)));
+    }
+    return;
   } else {
     // 追加モード：新しい期間を追加
     // 新しい期間の開始月より前で、終了月がない期間を自動で終了させる
@@ -1290,37 +1388,40 @@ async function addMemberPeriod() {
     }
 
     // 最後の継続中の期間を終了させる
+    let closedPeriod = null;
     if (continuingPeriods.length > 0) {
       const lastContinuingPeriod = continuingPeriods.sort((a, b) => b.start_ym.localeCompare(a.start_ym))[0];
       const prevMonth = getPrevMonth(startYm);
       lastContinuingPeriod.end_ym = prevMonth;
+      closedPeriod = lastContinuingPeriod;
       toast(`${ATTR_L[lastContinuingPeriod.attr]}の終了月を${prevMonth}に自動設定しました`);
     }
 
-    S.memberPeriods.push({
-      id: nid++,
-      member_id: memberId,
-      start_ym: startYm,
-      end_ym: endYm || '',
-      attr: attr
-    });
+    const newPeriod = { id: nid++, member_id: memberId, start_ym: startYm, end_ym: endYm || '', attr: attr };
+    S.memberPeriods.push(newPeriod);
     document.getElementById('new-period-start').value = '';
     document.getElementById('new-period-end').value = '';
     document.getElementById('new-period-attr').value = 'male';
     toast('期間を追加しました ✓');
-  }
 
-  renderMemberPeriods(memberId);
-  await saveMemberPeriods();
+    renderMemberPeriods(memberId);
+    const ops = [saveSheet(() => sheetsAppend(SH.MEMBER_PERIODS, [periodToRow(newPeriod)]))];
+    if (closedPeriod) {
+      const closedRow = S.memberPeriods.findIndex(p => p.id === closedPeriod.id) + 2;
+      ops.push(saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, closedRow, periodToRow(closedPeriod))));
+    }
+    await Promise.all(ops);
+  }
 }
 
 async function deleteMemberPeriod(periodId) {
   if (!confirm('この期間を削除しますか？')) return;
   const memberId = parseInt(document.getElementById('me-id').value);
+  const row = S.memberPeriods.findIndex(p => p.id === periodId) + 2;
   S.memberPeriods = S.memberPeriods.filter(p => p.id !== periodId);
   toast('削除しました');
   renderMemberPeriods(memberId);
-  await saveMemberPeriods();
+  await saveSheet(() => sheetsDeleteRow(SH.MEMBER_PERIODS, row));
 }
 
 function openEditPeriod(periodId) {
@@ -1368,16 +1469,20 @@ async function saveMember() {
   m.name  = `${firstName} ${lastName}`;
   m.grade = document.getElementById('me-grade').value;
   closeM('m-edit'); toast('更新しました ✓');
-  render(); await saveMembers();
+  render();
+  const row = S.members.findIndex(x => x.id === id) + 2;
+  await saveSheet(() => sheetsUpdateRow(SH.MEMBERS, row, memberToRow(m)));
 }
 
 async function deleteMember() {
   const id = parseInt(document.getElementById('me-id').value);
   const m  = S.members.find(m => m.id===id);
   if (!confirm(`「${m?.name}」を削除しますか？`)) return;
+  const row = S.members.findIndex(m => m.id===id) + 2;
   S.members = S.members.filter(m => m.id!==id);
   closeM('m-edit'); toast('削除しました');
-  render(); await saveMembers();
+  render();
+  await saveSheet(() => sheetsDeleteRow(SH.MEMBERS, row));
 }
 
 /* ===== BULK OPERATIONS ===== */
@@ -1448,6 +1553,8 @@ async function bulkAddMembers() {
 
   const today = new Date();
   const currentYm = toYM(today);
+  const newMembers = [];
+  const newPeriods = [];
 
   for (const line of lines) {
     const [firstName, lastName, grade, attrInput] = line.split(',').map(s => s.trim());
@@ -1469,16 +1576,14 @@ async function bulkAddMembers() {
 
     const name = `${firstName} ${lastName}`;
     const newMemberId = nid++;
-    S.members.push({ id:newMemberId, name, grade, attr });
+    const m = { id:newMemberId, name, grade, attr };
+    S.members.push(m);
+    newMembers.push(m);
 
     // memberPeriodsに期間を追加
-    S.memberPeriods.push({
-      id: nid++,
-      member_id: newMemberId,
-      start_ym: currentYm,
-      end_ym: '',
-      attr: attr
-    });
+    const p = { id: nid++, member_id: newMemberId, start_ym: currentYm, end_ym: '', attr: attr };
+    S.memberPeriods.push(p);
+    newPeriods.push(p);
 
     added++;
   }
@@ -1487,7 +1592,10 @@ async function bulkAddMembers() {
   document.getElementById('bulk-members-text').value = '';
   toast(`${added}名追加しました ✓`);
   render();
-  await Promise.all([saveMembers(), saveMemberPeriods()]);
+  await Promise.all([
+    saveSheet(() => sheetsAppend(SH.MEMBERS, newMembers.map(memberToRow))),
+    saveSheet(() => sheetsAppend(SH.MEMBER_PERIODS, newPeriods.map(periodToRow))),
+  ]);
 }
 
 function bulkChangeAttr() {
@@ -1508,6 +1616,8 @@ async function confirmBulkChangeAttr() {
   if (!startYm) { toast('開始月を入力してください'); return; }
 
   let addedCount = 0;
+  const closedPeriods = [];
+  const newPeriods = [];
   selected.forEach(id => {
     // 新しい期間の開始月より前で、終了月がない期間を自動で終了させる
     const continuingPeriods = S.memberPeriods.filter(p =>
@@ -1520,16 +1630,13 @@ async function confirmBulkChangeAttr() {
       const lastContinuingPeriod = continuingPeriods.sort((a, b) => b.start_ym.localeCompare(a.start_ym))[0];
       const prevMonth = getPrevMonth(startYm);
       lastContinuingPeriod.end_ym = prevMonth;
+      closedPeriods.push(lastContinuingPeriod);
     }
 
     // 新しい期間を追加
-    S.memberPeriods.push({
-      id: nid++,
-      member_id: id,
-      start_ym: startYm,
-      end_ym: '',
-      attr: newAttr
-    });
+    const p = { id: nid++, member_id: id, start_ym: startYm, end_ym: '', attr: newAttr };
+    S.memberPeriods.push(p);
+    newPeriods.push(p);
     addedCount++;
   });
 
@@ -1538,7 +1645,12 @@ async function confirmBulkChangeAttr() {
   document.getElementById('bulk-change-to-attr').value = '';
   toast(`${addedCount}名の期間を追加しました ✓`);
   render();
-  await saveMemberPeriods();
+  const ops = [saveSheet(() => sheetsAppend(SH.MEMBER_PERIODS, newPeriods.map(periodToRow)))];
+  closedPeriods.forEach(cp => {
+    const row = S.memberPeriods.findIndex(p => p.id === cp.id) + 2;
+    ops.push(saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, row, periodToRow(cp))));
+  });
+  await Promise.all(ops);
 }
 
 async function bulkDelete() {
@@ -1546,9 +1658,11 @@ async function bulkDelete() {
   if (selected.length === 0) { toast('部員を選択してください'); return; }
   const names = selected.map(id => S.members.find(m => m.id===id)?.name).join(', ');
   if (!confirm(`以下の${selected.length}名を削除しますか？\n${names}`)) return;
+  const rows = selected.map(id => S.members.findIndex(m => m.id===id) + 2);
   S.members = S.members.filter(m => !selected.includes(m.id));
   toast(`${selected.length}名削除しました`);
-  render(); await saveMembers();
+  render();
+  await saveSheet(() => sheetsDeleteRows(SH.MEMBERS, rows));
 }
 
 /* ================================================================
@@ -1616,7 +1730,7 @@ function renderFee() {
            onchange="setPrac(${m.id},'${ym}',this.value)">`
       : `<span class="text-tertiary text-sm text-center">—</span>`;
     return `<tr>
-      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${m.name}</span></td>
+      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${escapeHtml(m.name)}</span></td>
       <td>${attrBadge(attr)}</td>
       <td class="text-center">${pi}</td>
       <td class="text-right amount-text">${fmt(fee)}</td>
@@ -1630,8 +1744,9 @@ function renderFee() {
 }
 
 async function setPrac(id, ym, v) {
+  const count = parseInt(v)||0;
   if (!S.pracCount[ym]) S.pracCount[ym] = {};
-  S.pracCount[ym][id] = parseInt(v)||0;
+  S.pracCount[ym][id] = count;
 
   if (!S.feeRec[ym]) {
     S.feeRec[ym] = {};
@@ -1640,13 +1755,36 @@ async function setPrac(id, ym, v) {
     });
   }
 
-  renderFee(); await savePrac();
+  renderFee();
+
+  const idx = S.pracCounts.findIndex(r => r.member_id === id && r.ym === ym);
+  if (idx >= 0) {
+    const rec = S.pracCounts[idx];
+    rec.count = count;
+    await saveSheet(() => sheetsUpdateRow(SH.PRAC, idx + 2, pracCountToRow(rec)));
+  } else {
+    const rec = { id: nid++, member_id: id, ym, count };
+    S.pracCounts.push(rec);
+    await saveSheet(() => sheetsAppend(SH.PRAC, [pracCountToRow(rec)]));
+  }
 }
 
 async function toggleFee(id, ym) {
   if (!S.feeRec[ym]) S.feeRec[ym] = {};
-  S.feeRec[ym][id] = !S.feeRec[ym][id];
-  renderFee(); renderDash(); await saveFeeRec();
+  const paid = !S.feeRec[ym][id];
+  S.feeRec[ym][id] = paid;
+  renderFee(); renderDash();
+
+  const idx = S.feeRecs.findIndex(r => r.member_id === id && r.ym === ym);
+  if (idx >= 0) {
+    const rec = S.feeRecs[idx];
+    rec.paid = paid;
+    await saveSheet(() => sheetsUpdateRow(SH.FEE_REC, idx + 2, feeRecToRow(rec)));
+  } else {
+    const rec = { id: nid++, member_id: id, ym, paid };
+    S.feeRecs.push(rec);
+    await saveSheet(() => sheetsAppend(SH.FEE_REC, [feeRecToRow(rec)]));
+  }
 }
 
 function renderExecUnpaid() {
@@ -1686,7 +1824,7 @@ function renderExecUnpaid() {
       return `<td class="text-tertiary">—</td>`;
     }).join('');
     return `<tr>
-      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${m.name}</span></td>
+      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${escapeHtml(m.name)}</span></td>
       ${cells}
       <td class="total-col">${fmtN(total)}</td>
     </tr>`;
@@ -1737,7 +1875,7 @@ async function saveFee() {
   };
   S.fee.maxExec = parseInt(document.getElementById('fs-max-exec').value) || 2500;
   closeM('m-fee'); toast('部費設定を保存しました ✓');
-  render(); await saveFeeSettings();
+  render(); await saveFeeBase();
 }
 
 function renderAdjList() {
@@ -1760,16 +1898,20 @@ async function addAdj() {
   if (!amount||amount<0) { toast('金額を入力してください'); return; }
   if (!from||!to)        { toast('期間を入力してください'); return; }
   if (from>to)           { toast('開始・終了月を正しく設定してください'); return; }
-  S.fee.adjs.push({ id:nid++, attr, amount, from, to });
+  const a = { id:nid++, attr, amount, from, to };
+  S.fee.adjs.push(a);
   ['adj-amt','adj-from','adj-to'].forEach(id => document.getElementById(id).value='');
   renderAdjList(); toast('一時調整を追加しました ✓');
-  await saveFeeSettings();
+  await saveSheet(() => sheetsAppend(SH.FEE_SET, [adjToRow(a)]));
 }
 
 async function delAdj(id) {
+  const idx = S.fee.adjs.findIndex(a => a.id === id);
+  if (idx < 0) return;
+  const row = idx + FEE_SET_ADJ_START_ROW;
   S.fee.adjs = S.fee.adjs.filter(a => a.id!==id);
   renderAdjList(); renderFeeView(); renderFee();
-  await saveFeeSettings();
+  await saveSheet(() => sheetsDeleteRow(SH.FEE_SET, row));
 }
 
 /* ================================================================
@@ -1815,11 +1957,11 @@ function renderCategoriesList() {
         <div class="fg" style="margin-bottom:12px">
           <div class="fi">
             <label class="text-sm">科目分類</label>
-            <input type="text" id="edit-cat-cls" value="${editCat.classification}" class="form-control">
+            <input type="text" id="edit-cat-cls" value="${escapeHtml(editCat.classification)}" class="form-control">
           </div>
           <div class="fi">
             <label class="text-sm">科目名</label>
-            <input type="text" id="edit-cat-name" value="${editCat.category}" class="form-control">
+            <input type="text" id="edit-cat-name" value="${escapeHtml(editCat.category)}" class="form-control">
           </div>
         </div>
         <div class="flex flex-gap-6">
@@ -1835,10 +1977,10 @@ function renderCategoriesList() {
     ? '<div style="color:var(--tx3);font-size:12px">科目がありません</div>'
     : Object.entries(grouped).map(([cls, items]) => `
         <div style="margin-bottom:12px;padding:10px;background:var(--sur);border-radius:6px;border:1px solid var(--bdr)">
-          <div style="font-weight:600;margin-bottom:8px;font-size:12px;color:var(--tx2)">${cls}</div>
+          <div style="font-weight:600;margin-bottom:8px;font-size:12px;color:var(--tx2)">${escapeHtml(cls)}</div>
           ${items.map((cat, idx) => `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:12px">
-              <span>${cat.category}</span>
+              <span>${escapeHtml(cat.category)}</span>
               <div class="flex flex-gap-4">
                 <button class="btn bs sm btn-xs" onclick="editCategory(${categoriesEdited.indexOf(cat)})">編集</button>
                 <button class="btn bd sm btn-xs" onclick="deleteCategoryByRef(${categoriesEdited.indexOf(cat)})">削除</button>
@@ -1903,18 +2045,25 @@ function saveEditCategory(index) {
   toast('科目を更新しました');
 }
 
+// 科目(categories)にはidが無く、並び替え時に配列順=シート行順の前提も崩れるため、
+// 他エンティティのような行単位の追加・更新・削除ではなく、保存時に一括で洗い替える。
+// 編集は「保存」を押すまでcategoriesEditedという作業コピー上で行われるため、
+// 連打や複数タブでの同時編集さえなければ実務上のリスクは小さい。
 async function saveCategories() {
   try {
     const rows = categoriesEdited.map(c => [c.type, c.classification, c.category, c.order || 0]);
-    await sheetsClear(SH.CATEGORIES);
-    if (rows.length > 0) {
-      await sheetsAppend(SH.CATEGORIES, rows);
-    }
+    await saveSheet(async () => {
+      await sheetsClear(SH.CATEGORIES);
+      if (rows.length > 0) {
+        await sheetsAppend(SH.CATEGORIES, rows);
+      }
+    });
     S.categories = categoriesEdited;
     initializeCategories();
     render();
     closeM('m-categories');
     toast('科目設定を保存しました ✓');
+    renderCategoriesPage();
   } catch (e) {
     console.error('科目設定の保存に失敗しました:', e);
     toast('保存に失敗しました');
@@ -1961,7 +2110,7 @@ function renderReport() {
     : Object.keys(clss).sort().map(k => {
         const d=clss[k];
         return `<div class="flex flex-center flex-between p-7-bdr">
-          <span class="text-sm" style="background:var(--sur2);padding:2px 8px;border-radius:20px">${k}</span>
+          <span class="text-sm" style="background:var(--sur2);padding:2px 8px;border-radius:20px">${escapeHtml(k)}</span>
           <span class="text-sm">
             ${d.inc?`<span class="text-income">${fmt(d.inc)}</span> `:''}
             ${d.exp?`<span class="text-expense">-${fmt(d.exp)}</span>`:''}
@@ -2137,7 +2286,7 @@ function setBsType(type, el) {
     const bsCls = document.getElementById('bs-cls');
     if (bsCls) {
       const classifications = [...new Set(S.categories.filter(c => c.type === type).map(c => c.classification))];
-      bsCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+      bsCls.innerHTML = classifications.map((cls, idx) => `<option value="${escapeHtml(cls)}" ${idx===0 ? 'selected' : ''}>${escapeHtml(cls)}</option>`).join('');
       updateBsCategories();
     }
   }
@@ -2150,6 +2299,7 @@ function setBsAcct(acct, el) {
 }
 
 async function addTxFromSheet() {
+  let t;
   if (bsType === 'transfer') {
     const amount = parseInt(document.getElementById('bs-tr-amt').value);
     const from   = document.getElementById('bs-tr-from').value;
@@ -2160,7 +2310,8 @@ async function addTxFromSheet() {
     if (!amount || amount <= 0) { toast('金額を入力してください'); return; }
     if (!date)                  { toast('日付を入力してください'); return; }
     if (from === to)            { toast('移動元と移動先が同じです'); return; }
-    S.txs.push({ id: nid++, date, type: 'transfer', acct: from, toAcct: to, amount, desc, cat: '振替', note: '' });
+    t = { id: nid++, date, type: 'transfer', acct: from, toAcct: to, amount, desc, cat: '振替', note: '' };
+    S.txs.push(t);
     document.getElementById('bs-tr-amt').value  = '';
     document.getElementById('bs-tr-desc').value = '';
   } else {
@@ -2173,7 +2324,8 @@ async function addTxFromSheet() {
     if (!amount || amount <= 0) { toast('金額を入力してください'); return; }
     if (!desc)                  { toast('摘要を入力してください'); return; }
     if (!date)                  { toast('日付を入力してください'); return; }
-    S.txs.push({ id: nid++, date, type: bsType, acct: bsAcct, amount, desc, classification, cat, note });
+    t = { id: nid++, date, type: bsType, acct: bsAcct, amount, desc, classification, cat, note };
+    S.txs.push(t);
     document.getElementById('bs-amt').value  = '';
     document.getElementById('bs-desc').value = '';
     document.getElementById('bs-note').value = '';
@@ -2181,11 +2333,10 @@ async function addTxFromSheet() {
   closeBottomSheet();
   toast('追加しました ✓');
   render();
-  await saveTx();
+  await saveSheet(() => sheetsAppend(SH.TX, [txToRow(t)]));
 }
 
-/* スマホ用フィルタをPCフィルタと同期して renderTx が両方に反映されるよう上書き */
-const _origRenderTx = renderTx;
+/* PCフィルタとSPフィルタの両方を見て、両方のリストに反映する */
 function renderTx() {
   // PCフィルタ
   const fa = document.getElementById('f-acct')?.value || '';
@@ -2248,11 +2399,11 @@ function renderCategoriesPage() {
     return Object.entries(grouped).map(([cls, items]) => `
       <div style="margin-bottom:14px">
         <div style="font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;
-             letter-spacing:.5px;margin-bottom:6px;padding:0 4px">${cls}</div>
+             letter-spacing:.5px;margin-bottom:6px;padding:0 4px">${escapeHtml(cls)}</div>
         <div style="display:flex;flex-direction:column;gap:3px">
           ${items.map(cat => `
             <div class="flex flex-between card-item">
-              <span class="text-base">${cat.category}</span>
+              <span class="text-base">${escapeHtml(cat.category)}</span>
               <div class="flex flex-gap-5">
                 <button class="btn bs sm btn-xs-custom"
                   onclick="openCategoryModalWithEdit('${type}','${escHtml(cls)}','${escHtml(cat.category)}')">編集</button>
@@ -2289,9 +2440,12 @@ function renderCategoriesPage() {
     </div>`;
 }
 
-// HTMLエスケープ（onclick属性内でシングルクォートが壊れないよう）
+// onclick="...('${escHtml(x)}')" のようにHTML属性内のJS文字列リテラルへ埋め込むためのエスケープ。
+// JS文字列としてのクォート/バックスラッシュを先にエスケープしてから、属性値としてHTMLエスケープする
+// （ブラウザが属性値をHTMLデコードしてからJSとして評価するため、この順序でないと "/'`" によるインジェクションを防げない）
 function escHtml(str) {
-  return String(str).replace(/'/g, "\\'");
+  const jsEscaped = String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return escapeHtml(jsEscaped);
 }
 
 // 科目管理ページから直接削除
@@ -2301,8 +2455,10 @@ async function deleteCategoryDirect(type, cls, catName) {
     !(c.type === type && c.classification === cls && c.category === catName));
   const rows = S.categories.map(c => [c.type, c.classification, c.category, c.order || 0]);
   try {
-    await sheetsClear(SH.CATEGORIES + '!A2:D');
-    if (rows.length > 0) await sheetsAppend(SH.CATEGORIES + '!A2:D', rows);
+    await saveSheet(async () => {
+      await sheetsClear(SH.CATEGORIES + '!A2:D');
+      if (rows.length > 0) await sheetsAppend(SH.CATEGORIES + '!A2:D', rows);
+    });
     initializeCategories();
     renderCategoriesPage();
     toast('科目を削除しました');
@@ -2337,16 +2493,6 @@ function openCategoryModalWithEdit(type, cls, catName) {
       if (idx >= 0) editCategory(idx);
     }, 50);
   }, 50);
-}
-
-// showPage: categories 時に renderCategoriesPage を呼ぶ
-const _origShowPageCat = showPage;
-
-// saveCategories の後に科目管理ページを再描画
-const _origSaveCategoriesCat = saveCategories;
-async function saveCategories() {
-  await _origSaveCategoriesCat();
-  renderCategoriesPage();
 }
 
 /* ================================================================
@@ -2402,13 +2548,13 @@ function openBudgetRecordModal(recordId = null) {
     return;
   }
   courtSelect.innerHTML = S.budget.settings.map((s, idx) =>
-    `<option value="${idx}">${s.court_name} (${s.court_condition})</option>`
+    `<option value="${idx}">${escapeHtml(s.court_name)} (${escapeHtml(s.court_condition)})</option>`
   ).join('');
   updateBudgetCourtInfo();
   openM('m-budget-record');
 }
 
-function addBudgetSetting() {
+async function addBudgetSetting() {
   const courtName = document.getElementById('budget-court-name').value.trim();
   const courtCondition = document.getElementById('budget-court-condition').value.trim();
   const pricePerHour = parseInt(document.getElementById('budget-price-per-hour').value);
@@ -2418,23 +2564,32 @@ function addBudgetSetting() {
   if (!courtCondition) { toast('条件を入力してください'); return; }
   if (!pricePerHour || pricePerHour <= 0) { toast('単価を正しく入力してください'); return; }
 
-  S.budget.settings.push({
+  const s = {
     id: nid++,
     court_name: courtName,
     court_condition: courtCondition,
     price_per_hour: pricePerHour,
     remarks: remarks
-  });
+  };
+  S.budget.settings.push(s);
 
   toast('コート設定を追加しました ✓');
   renderBudgetSettingsList();
+  await saveSheet(() => sheetsAppend(SH.BUDGET_SETTINGS, [budgetSettingToRow(s)]));
 }
 
-function deleteBudgetSetting(id) {
+async function deleteBudgetSetting(id) {
   if (!confirm('このコート設定を削除しますか？')) return;
+  const row = S.budget.settings.findIndex(s => s.id === id) + 2;
   S.budget.settings = S.budget.settings.filter(s => s.id !== id);
   toast('削除しました');
   renderBudgetSettingsList();
+  await saveSheet(() => sheetsDeleteRow(SH.BUDGET_SETTINGS, row));
+}
+
+// コート設定は追加・削除のたびに即保存されるので、モーダルの「保存」ボタンは閉じるだけでよい
+function saveBudgetSettings() {
+  closeM('m-budget-settings');
 }
 
 function renderBudgetSettingsList() {
@@ -2450,10 +2605,10 @@ function renderBudgetSettingsList() {
     <div style="margin-bottom:12px;padding:10px;background:var(--sur);border-radius:6px;border:1px solid var(--bdr)">
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div style="flex:1">
-          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${s.court_name}</div>
-          <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${s.court_condition}</div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${escapeHtml(s.court_name)}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${escapeHtml(s.court_condition)}</div>
           <div style="font-size:13px;font-family:'DM Mono',monospace;color:var(--red);font-weight:500">¥${fmtN(s.price_per_hour)}/時間</div>
-          ${s.remarks ? `<div style="font-size:11px;color:var(--tx3);margin-top:4px">${s.remarks}</div>` : ''}
+          ${s.remarks ? `<div style="font-size:11px;color:var(--tx3);margin-top:4px">${escapeHtml(s.remarks)}</div>` : ''}
         </div>
         <button class="btn bd sm" onclick="deleteBudgetSetting(${s.id})" style="margin-left:10px">削除</button>
       </div>
@@ -2514,6 +2669,7 @@ async function addBudgetRecord() {
   const setting = S.budget.settings[courtIdx];
   const amount = Math.round(hours * setting.price_per_hour);
 
+  let saveOp;
   if (editingBudgetRecordId) {
     const record = S.budget.records.find(r => r.id === editingBudgetRecordId);
     if (record) {
@@ -2525,9 +2681,11 @@ async function addBudgetRecord() {
       record.amount = amount;
       record.remarks = remarks;
       toast('予算を更新しました ✓');
+      const row = S.budget.records.findIndex(r => r.id === editingBudgetRecordId) + 2;
+      saveOp = () => sheetsUpdateRow(SH.BUDGET, row, budgetRecordToRow(record));
     }
   } else {
-    S.budget.records.push({
+    const record = {
       id: nid++,
       date: date,
       court_name: setting.court_name,
@@ -2536,22 +2694,25 @@ async function addBudgetRecord() {
       price_per_hour: setting.price_per_hour,
       amount: amount,
       remarks: remarks
-    });
+    };
+    S.budget.records.push(record);
     toast('予算を追加しました ✓');
+    saveOp = () => sheetsAppend(SH.BUDGET, [budgetRecordToRow(record)]);
   }
 
   closeM('m-budget-record');
   editingBudgetRecordId = null;
   renderBudget();
-  await saveBudgetRecords();
+  if (saveOp) await saveSheet(saveOp);
 }
 
 async function deleteBudgetRecord(id) {
   if (!confirm('この予算記録を削除しますか？')) return;
+  const row = S.budget.records.findIndex(r => r.id === id) + 2;
   S.budget.records = S.budget.records.filter(r => r.id !== id);
   toast('削除しました');
   renderBudget();
-  await saveBudgetRecords();
+  await saveSheet(() => sheetsDeleteRow(SH.BUDGET, row));
 }
 
 function renderBudget() {
@@ -2606,7 +2767,7 @@ function renderCourtBudget() {
             ${records.sort((a,b) => a.date.localeCompare(b.date))
               .map(r => `<tr>
                 <td>${r.date.slice(5)}</td>
-                <td style="font-size:13px">${r.court_name}<br><span style="color:var(--tx2);font-size:11px">${r.court_condition}</span></td>
+                <td style="font-size:13px">${escapeHtml(r.court_name)}<br><span style="color:var(--tx2);font-size:11px">${escapeHtml(r.court_condition)}</span></td>
                 <td>${r.hours}h</td>
                 <td>${fmt(r.price_per_hour)}/h</td>
                 <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
@@ -2637,8 +2798,8 @@ function renderCategoryBudget() {
             ${records.sort((a,b) => a.date.localeCompare(b.date))
               .map(r => `<tr>
                 <td>${r.date.slice(5)}</td>
-                <td>${r.classification}</td>
-                <td>${r.category}</td>
+                <td>${escapeHtml(r.classification)}</td>
+                <td>${escapeHtml(r.category)}</td>
                 <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
                 <td style="white-space:nowrap"><button class="btn bs sm" onclick="openBudgetCategoryRecordModal(${r.id})" style="margin-right:4px">編集</button><button class="btn bd sm" onclick="deleteBudgetCategoryRecord(${r.id})">削除</button></td>
               </tr>`).join('')}
@@ -2786,7 +2947,7 @@ function openBudgetCategoryRecordModal(recordId = null) {
 
   const classifications = [...new Set(S.categories.filter(c => c.type === budgetCategoryType).map(c => c.classification))];
   const classifySelect = document.getElementById('budget-cat-classification');
-  classifySelect.innerHTML = classifications.map((c, idx) => `<option value="${c}" ${idx === 0 ? 'selected' : ''}>${c}</option>`).join('');
+  classifySelect.innerHTML = classifications.map((c, idx) => `<option value="${escapeHtml(c)}" ${idx === 0 ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
 
   updateBudgetCategoryList();
   openM('m-budget-category-record');
@@ -2812,7 +2973,7 @@ function switchBudgetCategoryType(type) {
 function renderBudgetCategoryClassifications() {
   const classifications = [...new Set(S.categories.filter(c => c.type === budgetCategoryType).map(c => c.classification))];
   const classifySelect = document.getElementById('budget-cat-classification');
-  classifySelect.innerHTML = classifications.map((c, idx) => `<option value="${c}" ${idx === 0 ? 'selected' : ''}>${c}</option>`).join('');
+  classifySelect.innerHTML = classifications.map((c, idx) => `<option value="${escapeHtml(c)}" ${idx === 0 ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
   updateBudgetCategoryList();
 }
 
@@ -2820,7 +2981,7 @@ function updateBudgetCategoryList() {
   const classifyValue = document.getElementById('budget-cat-classification').value;
   const categories = S.categories.filter(c => c.type === budgetCategoryType && c.classification === classifyValue);
   const categorySelect = document.getElementById('budget-cat-category');
-  categorySelect.innerHTML = categories.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+  categorySelect.innerHTML = categories.map(c => `<option value="${escapeHtml(c.category)}">${escapeHtml(c.category)}</option>`).join('');
 }
 
 async function addBudgetCategoryRecord() {
@@ -2834,6 +2995,7 @@ async function addBudgetCategoryRecord() {
   if (!classification || !category) { toast('科目を選択してください'); return; }
   if (!amount || amount <= 0) { toast('金額を正しく入力してください'); return; }
 
+  let saveOp;
   if (editingBudgetCategoryRecordId) {
     const record = S.budget.categoryRecords.find(r => r.id === editingBudgetCategoryRecordId);
     if (record) {
@@ -2844,9 +3006,11 @@ async function addBudgetCategoryRecord() {
       record.amount = amount;
       record.remarks = remarks;
       toast('更新しました ✓');
+      const row = S.budget.categoryRecords.findIndex(r => r.id === editingBudgetCategoryRecordId) + 2;
+      saveOp = () => sheetsUpdateRow(SH.BUDGET_CATEGORY_RECORDS, row, budgetCategoryRecordToRow(record));
     }
   } else {
-    S.budget.categoryRecords.push({
+    const record = {
       id: nid++,
       date: date,
       type: budgetCategoryType,
@@ -2854,31 +3018,27 @@ async function addBudgetCategoryRecord() {
       category: category,
       amount: amount,
       remarks: remarks
-    });
+    };
+    S.budget.categoryRecords.push(record);
     toast('追加しました ✓');
+    saveOp = () => sheetsAppend(SH.BUDGET_CATEGORY_RECORDS, [budgetCategoryRecordToRow(record)]);
   }
 
   closeM('m-budget-category-record');
   editingBudgetCategoryRecordId = null;
   renderBudget();
-  await saveBudgetCategoryRecords();
+  if (saveOp) await saveSheet(saveOp);
 }
 
 async function deleteBudgetCategoryRecord(id) {
   if (!confirm('この記録を削除しますか？')) return;
+  const row = S.budget.categoryRecords.findIndex(r => r.id === id) + 2;
   S.budget.categoryRecords = S.budget.categoryRecords.filter(r => r.id !== id);
   toast('削除しました');
   renderBudget();
-  await saveBudgetCategoryRecords();
+  await saveSheet(() => sheetsDeleteRow(SH.BUDGET_CATEGORY_RECORDS, row));
 }
 
-const saveBudgetCategoryRecords = () => saveSheet(async () => {
-  await sheetsWriteAll(SH.BUDGET_CATEGORY_RECORDS,
-    S.budget.categoryRecords.map(r => [r.id, r.date, r.type || 'expense', r.classification, r.category, r.amount, r.remarks || '']));
-});
-
-async function saveAllBudget() {
-  await saveBudgetRecords();
-  await saveBudgetSettings();
-  await saveBudgetCategoryRecords();
+function budgetCategoryRecordToRow(r) {
+  return [r.id, r.date, r.type || 'expense', r.classification, r.category, r.amount, r.remarks || ''];
 }
