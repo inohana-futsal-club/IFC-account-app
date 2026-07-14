@@ -894,7 +894,7 @@ function txRow(t) {
   const dateParts = t.date.slice(5).split('-');
   const dateLabel = dateParts.length === 2
     ? `${parseInt(dateParts[0])}/${parseInt(dateParts[1])}`
-    : t.date.slice(5);
+    : escapeHtml(t.date.slice(5));
 
   return `<div class="txr">
     <div class="txr-row1">
@@ -1173,7 +1173,7 @@ function renderCashLedger(acct, title) {
       else                { inAmt=t.amount;  bal+=t.amount; totalIn+=t.amount;  label=`振替入金←${t.acct==='cash'?'現金':'銀行'}`; }
     }
     rows += `<tr>
-      <td class="num">${t.date.replace(/-/g, '/')}</td>
+      <td class="num">${escapeHtml(t.date.replace(/-/g, '/'))}</td>
       <td>${escapeHtml(t.cat)||'—'}</td>
       <td>${escapeHtml(label)}</td>
       <td class="num text-income">${inAmt?fmtN(inAmt):''}</td>
@@ -1212,7 +1212,7 @@ function renderCatLedger() {
       const amt = t.type==='income' ? t.amount : -t.amount;
       total += amt;
       rows += `<tr>
-        <td class="num">${t.date.replace(/-/g, '/')}</td><td>${escapeHtml(t.desc)}</td>
+        <td class="num">${escapeHtml(t.date.replace(/-/g, '/'))}</td><td>${escapeHtml(t.desc)}</td>
         <td class="num text-secondary">${escapeHtml(t.classification)} > ${escapeHtml(t.cat)}</td>
         <td><span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span></td>
         <td class="num ${t.type==='income'?'text-income':'text-expense'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td>
@@ -1416,7 +1416,7 @@ function renderMemberPeriods(memberId) {
     <div style="margin-bottom:12px;padding:10px;background:var(--sur);border-radius:6px;border:1px solid var(--bdr)">
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div style="flex:1">
-          <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${p.start_ym}${p.end_ym ? '〜' + p.end_ym : '〜継続中'}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">${escapeHtml(p.start_ym)}${p.end_ym ? '〜' + escapeHtml(p.end_ym) : '〜継続中'}</div>
           <div style="font-weight:600">${ATTR_L[p.attr]}</div>
         </div>
         <div style="display:flex;gap:6px">
@@ -1983,7 +1983,7 @@ function renderExecUnpaid() {
   }
 
   const cols = [...new Set(active.flatMap(m => Object.keys(data[m.id])))].sort();
-  const thead = `<tr><th>学年</th>${cols.map(ym=>`<th>${ym}</th>`).join('')}<th>合計</th></tr>`;
+  const thead = `<tr><th>学年</th>${cols.map(ym=>`<th>${escapeHtml(ym)}</th>`).join('')}<th>合計</th></tr>`;
   const tbody = active.map(m => {
     let total=0;
     const cells = cols.map(ym => {
@@ -2053,7 +2053,7 @@ function renderAdjList() {
     : S.fee.adjs.map(a => `
         <div class="adj-item">
           <span>${attrBadge(a.attr)} <span style="font-family:'DM Mono',monospace;font-size:12px">${fmt(a.amount)}</span></span>
-          <span class="text-xs-muted">${a.from}〜${a.to}</span>
+          <span class="text-xs-muted">${escapeHtml(a.from)}〜${escapeHtml(a.to)}</span>
           <button class="btn bd sm" onclick="delAdj(${a.id})">削除</button>
         </div>`).join('');
 }
@@ -2258,7 +2258,7 @@ function renderReport() {
         const d=monthly[ym], bal=d.inc-d.exp;
         return `<div class="p-7-bdr">
           <div class="flex flex-between mb-2">
-            <span class="text-sm-mono">${ym}</span>
+            <span class="text-sm-mono">${escapeHtml(ym)}</span>
             <span class="text-sm font-semibold ${bal>=0?'text-income':'text-expense'}">${bal>=0?'+':''}${fmt(bal)}</span>
           </div>
           <div class="text-xs text-secondary-color">
@@ -2304,7 +2304,7 @@ function renderTrendTable(monthly) {
     ms.map(ym => {
       const d=monthly[ym], bal=d.inc-d.exp; cum+=bal;
       return `<tr>
-        <td class="text-sm-mono">${ym}</td>
+        <td class="text-sm-mono">${escapeHtml(ym)}</td>
         <td class="num text-income">${fmtN(d.inc)}</td>
         <td class="num text-expense">${fmtN(d.exp)}</td>
         <td class="num font-semibold ${bal>=0?'text-income':'text-expense'}">${bal>=0?'+':''}${fmtN(bal)}</td>
@@ -2964,9 +2964,9 @@ function renderCourtBudget() {
           <tbody>
             ${records.sort((a,b) => a.date.localeCompare(b.date))
               .map(r => `<tr>
-                <td>${r.date.slice(5)}</td>
+                <td>${escapeHtml(r.date.slice(5))}</td>
                 <td style="font-size:13px">${escapeHtml(r.court_name)}<br><span style="color:var(--tx2);font-size:11px">${escapeHtml(r.court_condition)}</span></td>
-                <td>${r.hours}h</td>
+                <td>${escapeHtml(String(r.hours))}h</td>
                 <td>${fmt(r.price_per_hour)}/h</td>
                 <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
                 <td style="white-space:nowrap"><button class="btn bs sm" onclick="openBudgetRecordModal(${r.id})" style="margin-right:4px">編集</button><button class="btn bd sm" onclick="deleteBudgetRecord(${r.id})">削除</button></td>
@@ -2995,7 +2995,7 @@ function renderCategoryBudget() {
           <tbody>
             ${records.sort((a,b) => a.date.localeCompare(b.date))
               .map(r => `<tr>
-                <td>${r.date.slice(5)}</td>
+                <td>${escapeHtml(r.date.slice(5))}</td>
                 <td>${escapeHtml(r.classification)}</td>
                 <td>${escapeHtml(r.category)}</td>
                 <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
