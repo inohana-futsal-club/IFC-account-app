@@ -2516,6 +2516,16 @@ function openBudgetRecordModal(recordId = null) {
 
   const titleEl = document.getElementById('budget-record-modal-title');
   const submitBtn = document.getElementById('budget-record-submit-btn');
+  const courtSelect = document.getElementById('budget-record-court');
+
+  if (S.budget.settings.length === 0) {
+    toast('コート代設定がありません。先に設定を追加してください。');
+    return;
+  }
+  // 選択肢の再構築はvalue設定より先に行う（後で作り直すと選択状態が失われるため）
+  courtSelect.innerHTML = S.budget.settings.map((s, idx) =>
+    `<option value="${idx}">${escapeHtml(s.court_name)} (${escapeHtml(s.court_condition)})</option>`
+  ).join('');
 
   if (recordId) {
     const record = S.budget.records.find(r => r.id === recordId);
@@ -2528,12 +2538,16 @@ function openBudgetRecordModal(recordId = null) {
     document.getElementById('budget-record-hours').value = record.hours;
     document.getElementById('budget-record-remarks').value = record.remarks;
 
-    const courtSelect = document.getElementById('budget-record-court');
     const settingIdx = S.budget.settings.findIndex(s =>
       s.court_name === record.court_name && s.court_condition === record.court_condition
     );
     if (settingIdx >= 0) {
       courtSelect.value = settingIdx;
+    } else {
+      // 対応するコート設定が削除済み。先頭のコートを誤って選んだまま保存すると
+      // 別コート・別単価で上書きされてしまうため、編集自体を中止し警告する
+      toast('この記録のコート設定が見つかりません（削除された可能性があります）。編集できません。');
+      return;
     }
   } else {
     titleEl.textContent = '予算を追加';
@@ -2545,14 +2559,6 @@ function openBudgetRecordModal(recordId = null) {
     document.getElementById('budget-record-remarks').value = '';
   }
 
-  const courtSelect = document.getElementById('budget-record-court');
-  if (S.budget.settings.length === 0) {
-    toast('コート代設定がありません。先に設定を追加してください。');
-    return;
-  }
-  courtSelect.innerHTML = S.budget.settings.map((s, idx) =>
-    `<option value="${idx}">${escapeHtml(s.court_name)} (${escapeHtml(s.court_condition)})</option>`
-  ).join('');
   updateBudgetCourtInfo();
   openM('m-budget-record');
 }
