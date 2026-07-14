@@ -89,6 +89,9 @@ function getAvailableFiscalYears() {
   S.budget.categoryRecords.forEach(r => {
     if (r.date) years.add(getFiscalYear(r.date));
   });
+  S.txs.forEach(t => {
+    if (t.date) years.add(getFiscalYear(t.date));
+  });
   return Array.from(years).sort((a, b) => b - a);
 }
 
@@ -592,6 +595,9 @@ async function startApp() {
     render();
     setType('income');
     initializeCategories();
+    // DOMContentLoaded時点ではデータ未読み込みで選択肢が今年度のみになるため、
+    // データ読み込み完了後に選択肢を再構築する（currentFiscalYearが既に決まっていれば上書きしない）
+    initGlobalFiscalYear();
   } catch(e) {
     console.error(e);
     if (e.isAccessDenied) {
