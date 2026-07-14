@@ -55,19 +55,20 @@ function getPaidStatusClasses(isPaid) {
 /* ================================================================
    UTILITY FUNCTIONS - Fiscal Year Helpers
 ================================================================ */
+// 会計年度は9月始まり（幹部代の準備期間である9月から新年度の収支として扱う）
 function getFiscalYear(dateStr) {
   const date = new Date(dateStr);
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
-  return month >= 10 ? year : year - 1;
+  return month >= 9 ? year : year - 1;
 }
 
 function getFiscalYearRange(fiscalYear) {
   const months = [];
-  for (let m = 10; m <= 12; m++) {
+  for (let m = 9; m <= 12; m++) {
     months.push(`${fiscalYear}-${String(m).padStart(2, '0')}`);
   }
-  for (let m = 1; m <= 9; m++) {
+  for (let m = 1; m <= 8; m++) {
     months.push(`${fiscalYear + 1}-${String(m).padStart(2, '0')}`);
   }
   return months;
