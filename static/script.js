@@ -972,6 +972,8 @@ function openEditTx(id) {
   if (isTransfer) {
     document.getElementById('etx-date').value    = t.date;
     document.getElementById('etx-amt').value     = t.amount;
+    document.getElementById('etx-date-tr').value = t.date;
+    document.getElementById('etx-amt-tr').value  = t.amount;
     document.getElementById('etx-tr-from').value = t.acct;
     document.getElementById('etx-tr-to').value   = t.toAcct;
     document.getElementById('etx-tr-desc').value = t.desc;
