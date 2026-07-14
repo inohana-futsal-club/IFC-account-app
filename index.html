@@ -40,6 +40,10 @@
       <header>
         <div class="logo"><div class="logo-ic">会</div>部活会計</div>
         <div id="save-ind">保存中...</div>
+        <div id="save-fail-ind">
+          <span id="save-fail-count"></span>
+          <button onclick="retryFailedSaves()">再試行</button>
+        </div>
         <div class="hbals">
           <div class="hbal"><span class="hl">現金</span><span class="hv" id="h-cash" style="color:var(--csh)">¥0</span></div>
           <div class="hdiv"></div>

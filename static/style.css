@@ -595,6 +595,25 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   display: none;
 }
 
+#save-fail-ind {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--red);
+  flex-shrink: 0;
+}
+
+#save-fail-ind button {
+  font-size: 11px;
+  color: var(--red);
+  background: none;
+  border: 1px solid var(--red);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
 /* ================================================================
    RESPONSIVE — MOBILE (max 767px)
 ================================================================ */

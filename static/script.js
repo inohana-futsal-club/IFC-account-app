@@ -503,13 +503,21 @@ async function loadAll() {
 // 実行中の呼び出しをまるごと捨てており、連続操作時に保存が抜け落ちることがあった）
 let saveQueue = Promise.resolve();
 let pendingSaves = 0;
+// 保存に失敗した操作を記録しておき、リロード前に気づいて再試行できるようにする
+// （失敗してもローカルの表示上のデータは変更しない＝巻き戻しはしない）
+let failedSaves = [];
 
 function saveSheet(fn) {
   pendingSaves++;
   showSaveInd(true);
   const run = saveQueue.then(async () => {
     try { await fn(); }
-    catch(e) { console.error(e); toast('保存に失敗しました。再試行してください。'); }
+    catch(e) {
+      console.error(e);
+      failedSaves.push({ id: Date.now() + Math.random(), fn, error: e });
+      updateSaveFailBanner();
+      toast('保存に失敗しました。再試行してください。');
+    }
     finally {
       pendingSaves--;
       if (pendingSaves === 0) showSaveInd(false);
@@ -517,6 +525,27 @@ function saveSheet(fn) {
   });
   saveQueue = run;
   return run;
+}
+
+function updateSaveFailBanner() {
+  const el = document.getElementById('save-fail-ind');
+  const countEl = document.getElementById('save-fail-count');
+  if (!el || !countEl) return;
+  if (failedSaves.length === 0) {
+    el.style.display = 'none';
+  } else {
+    countEl.textContent = `⚠ 保存に失敗した変更が${failedSaves.length}件あります`;
+    el.style.display = 'flex';
+  }
+}
+
+async function retryFailedSaves() {
+  const toRetry = failedSaves;
+  failedSaves = [];
+  updateSaveFailBanner();
+  for (const item of toRetry) {
+    await saveSheet(item.fn);
+  }
 }
 
 function txToRow(t) {
