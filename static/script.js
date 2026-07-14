@@ -2457,8 +2457,8 @@ async function deleteCategoryDirect(type, cls, catName) {
   const rows = S.categories.map(c => [c.type, c.classification, c.category, c.order || 0]);
   try {
     await saveSheet(async () => {
-      await sheetsClear(SH.CATEGORIES + '!A2:D');
-      if (rows.length > 0) await sheetsAppend(SH.CATEGORIES + '!A2:D', rows);
+      await sheetsClear(SH.CATEGORIES);
+      if (rows.length > 0) await sheetsAppend(SH.CATEGORIES, rows);
     });
     initializeCategories();
     renderCategoriesPage();
