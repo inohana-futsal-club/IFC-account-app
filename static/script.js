@@ -313,6 +313,16 @@ function colLetter(colCount) {
   return String.fromCharCode(64 + colCount); // このアプリの全シートは列数<=26
 }
 
+// 楽観的ロック：保存直前に対象行を再取得し、自分がその行を最後に見た時点の値
+// （expectedValues）から変わっていないか確認する。取引・部員関連のみ使用。
+// チェック自体が失敗した場合（通信エラー等）は「変更なし」とみなし、実際の
+// 保存処理側のエラーハンドリング（401ならセッション切れモーダル等）に委ねる。
+async function assertRowUnchanged(sheetName, rowNum, expectedValues) {
+  const range = `${sheetName}!A${rowNum}:${colLetter(expectedValues.length)}${rowNum}`;
+  const current = (await sheetsGet(range))[0] || [];
+  return expectedValues.every((v, i) => String(v ?? '') === String(current[i] ?? ''));
+}
+
 async function sheetsUpdateRow(sheetName, rowNum, values) {
   const range = `${sheetName}!A${rowNum}:${colLetter(values.length)}${rowNum}`;
   await sheetsUpdate(range, [values]);
@@ -1067,30 +1077,45 @@ async function saveEditTx() {
   const id = parseInt(document.getElementById('etx-id').value);
   const t  = S.txs.find(t => t.id === id);
   if (!t) return;
+  const beforeRow = txToRow(t); // 楽観的ロック用：最後に読み込んだ時点の値
 
   const isTransfer = t.type === 'transfer';
+  let date, amount, acct, toAcct, desc, typeOn, acctOn;
   if (isTransfer) {
-    const date   = document.getElementById('etx-date').value;
-    const amount = parseInt(document.getElementById('etx-amt').value);
-    const acct   = document.getElementById('etx-tr-from').value;
-    const toAcct = document.getElementById('etx-tr-to').value;
-    const desc   = document.getElementById('etx-tr-desc').value.trim() ||
+    date   = document.getElementById('etx-date').value;
+    amount = parseInt(document.getElementById('etx-amt').value);
+    acct   = document.getElementById('etx-tr-from').value;
+    toAcct = document.getElementById('etx-tr-to').value;
+    desc   = document.getElementById('etx-tr-desc').value.trim() ||
                `${acct==='cash'?'現金':'銀行'}→${toAcct==='cash'?'現金':'銀行'}`;
     if (!date)              { toast('日付を入力してください'); return; }
     if (!amount||amount<=0) { toast('金額を正しく入力してください'); return; }
     if (acct === toAcct)    { toast('移動元と移動先が同じです'); return; }
-    t.date = date; t.amount = amount; t.acct = acct; t.toAcct = toAcct; t.desc = desc;
   } else {
-    const typeOn = ['income','expense'].find(tp =>
+    typeOn = ['income','expense'].find(tp =>
       document.getElementById('etx-t-' + tp).classList.contains('on'));
-    const acctOn = ['cash','bank'].find(ac =>
+    acctOn = ['cash','bank'].find(ac =>
       document.getElementById('etx-a-' + ac).classList.contains('on'));
-    const date   = document.getElementById('etx-date').value;
-    const amount = parseInt(document.getElementById('etx-amt').value);
-    const desc   = document.getElementById('etx-desc').value.trim();
+    date   = document.getElementById('etx-date').value;
+    amount = parseInt(document.getElementById('etx-amt').value);
+    desc   = document.getElementById('etx-desc').value.trim();
     if (!date)              { toast('日付を入力してください'); return; }
     if (!amount||amount<=0) { toast('金額を正しく入力してください'); return; }
     if (!desc)              { toast('摘要を入力してください'); return; }
+  }
+
+  const row = S.txs.findIndex(x => x.id === id) + 2;
+  const unchanged = await assertRowUnchanged(SH.TX, row, beforeRow).catch(() => true);
+  if (!unchanged && !confirm('他の人がこの取引を更新しています。上書きしますか？')) {
+    closeM('m-edit-tx');
+    await loadAll();
+    render();
+    return;
+  }
+
+  if (isTransfer) {
+    t.date = date; t.amount = amount; t.acct = acct; t.toAcct = toAcct; t.desc = desc;
+  } else {
     t.type   = typeOn || t.type;
     t.acct   = acctOn || t.acct;
     t.date   = date;
@@ -1103,7 +1128,6 @@ async function saveEditTx() {
   closeM('m-edit-tx');
   toast('更新しました ✓');
   render();
-  const row = S.txs.findIndex(x => x.id === id) + 2;
   await saveSheet(() => sheetsUpdateRow(SH.TX, row, txToRow(t)));
 }
 
@@ -1432,16 +1456,26 @@ async function addMemberPeriod() {
 
     const period = S.memberPeriods.find(p => p.id === editingPeriodId);
     if (period) {
+      const beforeRow = periodToRow(period); // 楽観的ロック用：最後に読み込んだ時点の値
+      const row = S.memberPeriods.findIndex(p => p.id === editingPeriodId) + 2;
+      const unchanged = await assertRowUnchanged(SH.MEMBER_PERIODS, row, beforeRow).catch(() => true);
+      if (!unchanged && !confirm('他の人がこの期間を更新しています。上書きしますか？')) {
+        cancelEditPeriod();
+        await loadAll();
+        renderMemberPeriods(memberId);
+        return;
+      }
       period.start_ym = startYm;
       period.end_ym = endYm || '';
       period.attr = attr;
-    }
-    toast('更新しました ✓');
-    cancelEditPeriod();
-    renderMemberPeriods(memberId);
-    if (period) {
-      const row = S.memberPeriods.findIndex(p => p.id === editingPeriodId) + 2;
+      toast('更新しました ✓');
+      cancelEditPeriod();
+      renderMemberPeriods(memberId);
       await saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, row, periodToRow(period)));
+    } else {
+      toast('更新しました ✓');
+      cancelEditPeriod();
+      renderMemberPeriods(memberId);
     }
     return;
   } else {
@@ -1541,15 +1575,25 @@ function cancelEditPeriod() {
 async function saveMember() {
   const id = parseInt(document.getElementById('me-id').value);
   const m  = S.members.find(m => m.id===id); if (!m) return;
+  const beforeRow = memberToRow(m); // 楽観的ロック用：最後に読み込んだ時点の値
   const firstName = document.getElementById('me-first-name').value.trim();
   const lastName  = document.getElementById('me-last-name').value.trim();
   if (!firstName) { toast('姓を入力してください'); return; }
   if (!lastName)  { toast('名を入力してください'); return; }
+
+  const row = S.members.findIndex(x => x.id === id) + 2;
+  const unchanged = await assertRowUnchanged(SH.MEMBERS, row, beforeRow).catch(() => true);
+  if (!unchanged && !confirm('他の人がこの部員情報を更新しています。上書きしますか？')) {
+    closeM('m-edit');
+    await loadAll();
+    render();
+    return;
+  }
+
   m.name  = `${firstName} ${lastName}`;
   m.grade = document.getElementById('me-grade').value;
   closeM('m-edit'); toast('更新しました ✓');
   render();
-  const row = S.members.findIndex(x => x.id === id) + 2;
   await saveSheet(() => sheetsUpdateRow(SH.MEMBERS, row, memberToRow(m)));
 }
 
@@ -1562,11 +1606,20 @@ async function deleteMember() {
   if (!openPeriod) { toast('この部員は既に退部済みです'); return; }
   if (!confirm(`「${m?.name}」を退部にしますか？（部員情報や会計記録は保持されます）`)) return;
 
+  const beforeRow = periodToRow(openPeriod); // 楽観的ロック用：最後に読み込んだ時点の値
+  const row = S.memberPeriods.findIndex(p => p.id === openPeriod.id) + 2;
+  const unchanged = await assertRowUnchanged(SH.MEMBER_PERIODS, row, beforeRow).catch(() => true);
+  if (!unchanged && !confirm('他の人がこの部員の在籍期間を更新しています。上書きしますか？')) {
+    closeM('m-edit');
+    await loadAll();
+    render();
+    return;
+  }
+
   const prevMonth = getPrevMonth(toYM(new Date()));
   openPeriod.end_ym = prevMonth;
   closeM('m-edit'); toast('退部にしました');
   render();
-  const row = S.memberPeriods.findIndex(p => p.id === openPeriod.id) + 2;
   await saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, row, periodToRow(openPeriod)));
 }
 
@@ -1753,13 +1806,31 @@ async function bulkDelete() {
   const names = targets.map(t => S.members.find(m => m.id===t.id)?.name).join(', ');
   if (!confirm(`以下の${targets.length}名を退部にしますか？（部員情報や会計記録は保持されます）\n${names}`)) return;
 
+  // 楽観的ロック：それぞれの在籍期間が最後に読み込んだ時点から変わっていないか確認
+  targets.forEach(t => {
+    t.row = S.memberPeriods.findIndex(p => p.id === t.openPeriod.id) + 2;
+    t.beforeRow = periodToRow(t.openPeriod);
+  });
+  const conflicted = [];
+  for (const t of targets) {
+    const unchanged = await assertRowUnchanged(SH.MEMBER_PERIODS, t.row, t.beforeRow).catch(() => true);
+    if (!unchanged) conflicted.push(t);
+  }
+  if (conflicted.length > 0) {
+    const conflictNames = conflicted.map(t => S.members.find(m => m.id===t.id)?.name).join(', ');
+    if (!confirm(`次の部員は他の人が在籍期間を更新しています: ${conflictNames}\nそれでも上書きしますか？`)) {
+      await loadAll();
+      render();
+      return;
+    }
+  }
+
   targets.forEach(t => { t.openPeriod.end_ym = prevMonth; });
   toast(`${targets.length}名を退部にしました`);
   render();
-  await Promise.all(targets.map(t => {
-    const row = S.memberPeriods.findIndex(p => p.id === t.openPeriod.id) + 2;
-    return saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, row, periodToRow(t.openPeriod)));
-  }));
+  await Promise.all(targets.map(t =>
+    saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, t.row, periodToRow(t.openPeriod)))
+  ));
 }
 
 /* ================================================================
