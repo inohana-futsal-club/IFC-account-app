@@ -397,7 +397,7 @@ async function loadAll() {
     .filter(r => r[0] && r[1] && r[2])  // id・date・typeが存在する行のみ
     .map(r => ({
       id:r[0]|0, date:String(r[1]), type:r[2], acct:r[3]||'cash',
-      toAcct:r[4]||'', amount:r[5]|0, desc:r[6]||'', classification:r[7]||'その他', cat:r[8]||'その他', note:r[9]||'',
+      toAcct:r[4]||'', amount:Number(r[5])||0, desc:r[6]||'', classification:r[7]||'その他', cat:r[8]||'その他', note:r[9]||'',
     }));
 
   S.members = mRows
@@ -426,7 +426,7 @@ async function loadAll() {
 
   S.pracCount = {};
   S.pracCounts = pcRows.map(r => {
-    const ym = String(r[2]), mid = r[1]|0, count = r[3]|0;
+    const ym = String(r[2]), mid = r[1]|0, count = Number(r[3])||0;
     if (!S.pracCount[ym]) S.pracCount[ym] = {};
     S.pracCount[ym][mid] = count;
     return { id:r[0]|0, member_id:mid, ym, count };
@@ -434,36 +434,36 @@ async function loadAll() {
 
   S.fee = { base:{ male:2000, female:2000, manager:1500, exec:500 }, maxExec:2500, adjs:[] };
   fsRows.forEach(r => {
-    if (r[3]==='base') S.fee.base[r[1]] = r[2]|0;
-    else if (r[3]==='maxExec') S.fee.maxExec = r[2]|0;
-    else S.fee.adjs.push({ id:r[0]|0, attr:r[1], amount:r[2]|0, from:r[4], to:r[5] });
+    if (r[3]==='base') S.fee.base[r[1]] = Number(r[2])||0;
+    else if (r[3]==='maxExec') S.fee.maxExec = Number(r[2])||0;
+    else S.fee.adjs.push({ id:r[0]|0, attr:r[1], amount:Number(r[2])||0, from:r[4], to:r[5] });
   });
   if (fsRows.length === 0) await saveFeeBase();
 
   S.categories = catRows
     .filter(r => r[0] && r[1] && r[2])
-    .map(r => ({ type:r[0], classification:r[1], category:r[2], order:r[3]|0 }))
+    .map(r => ({ type:r[0], classification:r[1], category:r[2], order:Number(r[3])||0 }))
     .sort((a,b) => a.order - b.order);
 
   S.budget.records = budgetRecords
     .filter(r => r[0] && r[1])
     .map(r => ({
       id:r[0]|0, date:String(r[1]), court_name:String(r[2]||''), court_condition:String(r[3]||''),
-      hours:parseFloat(r[4])||0, price_per_hour:r[5]|0, amount:r[6]|0, remarks:r[7]||''
+      hours:parseFloat(r[4])||0, price_per_hour:Number(r[5])||0, amount:Number(r[6])||0, remarks:r[7]||''
     }));
 
   S.budget.settings = budgetSettings
     .filter(r => r[0] && r[1] && r[2])
     .map(r => ({
       id:r[0]|0, court_name:String(r[1]), court_condition:String(r[2]),
-      price_per_hour:r[3]|0, remarks:r[4]||''
+      price_per_hour:Number(r[3])||0, remarks:r[4]||''
     }));
 
   S.budget.categoryRecords = budgetCategoryRecords
     .filter(r => r[0] && r[1])
     .map(r => ({
       id:r[0]|0, date:String(r[1]), type:String(r[2]||'expense'), classification:String(r[3]||''), category:String(r[4]||''),
-      amount:r[5]|0, remarks:r[6]||''
+      amount:Number(r[5])||0, remarks:r[6]||''
     }));
 
   S.carryoverRecords = carryoverRows
@@ -471,8 +471,8 @@ async function loadAll() {
     .map(r => ({
       fiscal_year: String(r[0]),
       date: String(r[1]),
-      cash: r[2]|0,
-      bank: r[3]|0,
+      cash: Number(r[2])||0,
+      bank: Number(r[3])||0,
       note: r[4]||'前年度繰越金'
     }));
 
@@ -588,6 +588,9 @@ async function startApp() {
   try {
     await loadAll();
     document.getElementById('main-app').style.display = 'flex';
+    // DOMContentLoaded時点ではuserEmailが未確定のため、ここで確定後に表示を更新する
+    const userNameEl = document.getElementById('user-name');
+    if (userNameEl && userEmail) userNameEl.textContent = userEmail.split('@')[0];
     const today = new Date(), ym = toYM(today);
     document.getElementById('tx-date').value   = toYMD(today);
     document.getElementById('bs-date').value   = toYMD(today);
@@ -637,11 +640,9 @@ const PAGE_NAMES = ['dashboard','transactions','ledger','members','fees','budget
 
 function showPage(n) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + n).classList.add('active');
   const idx = PAGE_NAMES.indexOf(n);
-  document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
   document.querySelectorAll('.bnav-btn')[idx]?.classList.add('active');
   render();
   if (n === 'ledger') showLedger(currentLedger);
@@ -724,9 +725,14 @@ function getMemberLastAttr(memberId) {
 }
 
 function sortedMembers() {
+  // 属性の正はmember_periods側にあるため、現時点の属性で第2ソートキーを求める
+  const currentYm = toYM(new Date());
   return [...S.members].sort((a,b) => {
     const gd = GRADE_ORDER[parseInt(a.grade)] - GRADE_ORDER[parseInt(b.grade)];
-    return gd !== 0 ? gd : ATTR_ORDER[a.attr] - ATTR_ORDER[b.attr];
+    if (gd !== 0) return gd;
+    const aOrder = ATTR_ORDER[getMemberAttrInMonth(a.id, currentYm)] ?? 99;
+    const bOrder = ATTR_ORDER[getMemberAttrInMonth(b.id, currentYm)] ?? 99;
+    return aOrder - bOrder;
   });
 }
 
@@ -1015,23 +1021,32 @@ async function saveEditTx() {
 
   const isTransfer = t.type === 'transfer';
   if (isTransfer) {
-    t.date   = document.getElementById('etx-date').value;
-    t.amount = parseInt(document.getElementById('etx-amt').value) || 0;
-    t.acct   = document.getElementById('etx-tr-from').value;
-    t.toAcct = document.getElementById('etx-tr-to').value;
-    t.desc   = document.getElementById('etx-tr-desc').value.trim() ||
-               `${t.acct==='cash'?'現金':'銀行'}→${t.toAcct==='cash'?'現金':'銀行'}`;
-    if (t.acct === t.toAcct) { toast('移動元と移動先が同じです'); return; }
+    const date   = document.getElementById('etx-date').value;
+    const amount = parseInt(document.getElementById('etx-amt').value);
+    const acct   = document.getElementById('etx-tr-from').value;
+    const toAcct = document.getElementById('etx-tr-to').value;
+    const desc   = document.getElementById('etx-tr-desc').value.trim() ||
+               `${acct==='cash'?'現金':'銀行'}→${toAcct==='cash'?'現金':'銀行'}`;
+    if (!date)              { toast('日付を入力してください'); return; }
+    if (!amount||amount<=0) { toast('金額を正しく入力してください'); return; }
+    if (acct === toAcct)    { toast('移動元と移動先が同じです'); return; }
+    t.date = date; t.amount = amount; t.acct = acct; t.toAcct = toAcct; t.desc = desc;
   } else {
     const typeOn = ['income','expense'].find(tp =>
       document.getElementById('etx-t-' + tp).classList.contains('on'));
     const acctOn = ['cash','bank'].find(ac =>
       document.getElementById('etx-a-' + ac).classList.contains('on'));
+    const date   = document.getElementById('etx-date').value;
+    const amount = parseInt(document.getElementById('etx-amt').value);
+    const desc   = document.getElementById('etx-desc').value.trim();
+    if (!date)              { toast('日付を入力してください'); return; }
+    if (!amount||amount<=0) { toast('金額を正しく入力してください'); return; }
+    if (!desc)              { toast('摘要を入力してください'); return; }
     t.type   = typeOn || t.type;
     t.acct   = acctOn || t.acct;
-    t.date   = document.getElementById('etx-date').value;
-    t.amount = parseInt(document.getElementById('etx-amt').value) || 0;
-    t.desc   = document.getElementById('etx-desc').value.trim();
+    t.date   = date;
+    t.amount = amount;
+    t.desc   = desc;
     t.classification = document.getElementById('etx-cls').value;
     t.cat    = document.getElementById('etx-cat').value;
     t.note   = document.getElementById('etx-note').value.trim();
@@ -1248,7 +1263,8 @@ async function addMember() {
   if (!startYm)   { toast('入部月を入力してください'); return; }
   const name = `${firstName} ${lastName}`;
   const newMemberId = nid++;
-  const m = { id:newMemberId, name, grade, attr };
+  // 属性の正はmember_periods側で持つため、member自体にはattrを持たせない
+  const m = { id:newMemberId, name, grade };
   S.members.push(m);
 
   // 期間情報を追加
@@ -1596,7 +1612,8 @@ async function bulkAddMembers() {
 
     const name = `${firstName} ${lastName}`;
     const newMemberId = nid++;
-    const m = { id:newMemberId, name, grade, attr };
+    // 属性の正はmember_periods側で持つため、member自体にはattrを持たせない
+    const m = { id:newMemberId, name, grade };
     S.members.push(m);
     newMembers.push(m);
 
@@ -2225,7 +2242,13 @@ function exportCSV() {
       t.type==='income'?'収入':t.type==='expense'?'支出':'口座振替',
       t.amount, t.desc, t.cat, t.note,
     ]);
-  const csv  = [h,...rows].map(r => r.map(v=>`"${v}"`).join(',')).join('\n');
+  // ダブルクォートのエスケープと、Excelで数式実行されるのを防ぐCSVインジェクション対策
+  const csvCell = v => {
+    let s = String(v);
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const csv  = [h,...rows].map(r => r.map(csvCell).join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8' });
   const a    = document.createElement('a');
   a.href     = URL.createObjectURL(blob);
@@ -2863,7 +2886,7 @@ function switchGlobalFiscalYear() {
   currentFiscalYear = parseInt(select.value);
 
   const range = getFiscalYearRange(currentFiscalYear);
-  ['budget-month', 'budget-category-month', 'fee-month', 'ledger-month'].forEach(id => {
+  ['budget-month', 'budget-category-month', 'fee-month'].forEach(id => {
     const input = document.getElementById(id);
     if (input && !range.includes(input.value)) {
       input.value = range[0];
