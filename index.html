@@ -335,7 +335,7 @@
               <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
               <button class="btn bp sm" onclick="openM('m-bulk-add')">⬆ 一括登録</button>
               <button class="btn bs sm" onclick="bulkChangeAttr()" style="display:none" id="bulk-change-btn">属性変更</button>
-              <button class="btn bd sm" onclick="bulkDelete()" style="display:none" id="bulk-delete-btn">一括削除</button>
+              <button class="btn bd sm" onclick="bulkDelete()" style="display:none" id="bulk-delete-btn">一括退部</button>
             </div>
           </div>
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
@@ -728,7 +728,7 @@
         </div>
 
         <div class="mact" style="margin-top:16px">
-          <button class="btn bd sm" onclick="deleteMember()" style="margin-right:auto">削除</button>
+          <button class="btn bd sm" onclick="deleteMember()" style="margin-right:auto">退部にする</button>
           <button class="btn bs" onclick="closeM('m-edit')">キャンセル</button>
           <button class="btn bp" onclick="saveMember()">保存</button>
         </div>

@@ -793,8 +793,10 @@ function renderDash() {
 
   const fym = document.getElementById('fee-month')?.value || ym;
   const rec = S.feeRec[fym] || {};
-  const tot = S.members.length;
-  const paid = Object.values(rec).filter(Boolean).length;
+  // 退部済み部員を分母・分子から除外するため、その月に在籍している部員に限定する
+  const activeMembers = S.members.filter(m => getMemberAttrInMonth(m.id, fym) !== null);
+  const tot = activeMembers.length;
+  const paid = activeMembers.filter(m => rec[m.id]).length;
   const pct  = tot>0 ? Math.round(paid/tot*100) : 0;
   document.getElementById('fee-dash-text').textContent = `${paid}名 / ${tot}名 納入済み（${pct}%）`;
   document.getElementById('fee-prog').style.width = pct + '%';
@@ -1485,15 +1487,21 @@ async function saveMember() {
   await saveSheet(() => sheetsUpdateRow(SH.MEMBERS, row, memberToRow(m)));
 }
 
+// 部員は削除せず、在籍中の期間を終了させて「退部」扱いにする
+// （会計記録・練習回数等が孤児化し、部費回収率が実態と乖離するのを防ぐため）
 async function deleteMember() {
   const id = parseInt(document.getElementById('me-id').value);
   const m  = S.members.find(m => m.id===id);
-  if (!confirm(`「${m?.name}」を削除しますか？`)) return;
-  const row = S.members.findIndex(m => m.id===id) + 2;
-  S.members = S.members.filter(m => m.id!==id);
-  closeM('m-edit'); toast('削除しました');
+  const openPeriod = S.memberPeriods.find(p => p.member_id === id && !p.end_ym);
+  if (!openPeriod) { toast('この部員は既に退部済みです'); return; }
+  if (!confirm(`「${m?.name}」を退部にしますか？（部員情報や会計記録は保持されます）`)) return;
+
+  const prevMonth = getPrevMonth(toYM(new Date()));
+  openPeriod.end_ym = prevMonth;
+  closeM('m-edit'); toast('退部にしました');
   render();
-  await saveSheet(() => sheetsDeleteRow(SH.MEMBERS, row));
+  const row = S.memberPeriods.findIndex(p => p.id === openPeriod.id) + 2;
+  await saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, row, periodToRow(openPeriod)));
 }
 
 /* ===== BULK OPERATIONS ===== */
@@ -1664,16 +1672,27 @@ async function confirmBulkChangeAttr() {
   await Promise.all(ops);
 }
 
+// 部員は削除せず、在籍中の期間を終了させて「退部」扱いにする（deleteMember()と同じ方針）
 async function bulkDelete() {
   const selected = getSelectedMembers();
   if (selected.length === 0) { toast('部員を選択してください'); return; }
-  const names = selected.map(id => S.members.find(m => m.id===id)?.name).join(', ');
-  if (!confirm(`以下の${selected.length}名を削除しますか？\n${names}`)) return;
-  const rows = selected.map(id => S.members.findIndex(m => m.id===id) + 2);
-  S.members = S.members.filter(m => !selected.includes(m.id));
-  toast(`${selected.length}名削除しました`);
+
+  const prevMonth = getPrevMonth(toYM(new Date()));
+  const targets = selected
+    .map(id => ({ id, openPeriod: S.memberPeriods.find(p => p.member_id === id && !p.end_ym) }))
+    .filter(t => t.openPeriod);
+  if (targets.length === 0) { toast('選択した部員は既に退部済みです'); return; }
+
+  const names = targets.map(t => S.members.find(m => m.id===t.id)?.name).join(', ');
+  if (!confirm(`以下の${targets.length}名を退部にしますか？（部員情報や会計記録は保持されます）\n${names}`)) return;
+
+  targets.forEach(t => { t.openPeriod.end_ym = prevMonth; });
+  toast(`${targets.length}名を退部にしました`);
   render();
-  await saveSheet(() => sheetsDeleteRows(SH.MEMBERS, rows));
+  await Promise.all(targets.map(t => {
+    const row = S.memberPeriods.findIndex(p => p.id === t.openPeriod.id) + 2;
+    return saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, row, periodToRow(t.openPeriod)));
+  }));
 }
 
 /* ================================================================
