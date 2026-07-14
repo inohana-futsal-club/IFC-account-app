@@ -585,9 +585,9 @@ async function startApp() {
     await loadAll();
     document.getElementById('main-app').style.display = 'flex';
     const today = new Date(), ym = toYM(today);
-    document.getElementById('tx-date').value   = today.toISOString().split('T')[0];
-    document.getElementById('bs-date').value   = today.toISOString().split('T')[0];
-    document.getElementById('tr-date').value   = today.toISOString().split('T')[0];
+    document.getElementById('tx-date').value   = toYMD(today);
+    document.getElementById('bs-date').value   = toYMD(today);
+    document.getElementById('tr-date').value   = toYMD(today);
     document.getElementById('fee-month').value = ym;
     render();
     setType('income');
@@ -617,6 +617,8 @@ function setLoading(on, msg='') {
    UTIL
 ================================================================ */
 const toYM   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+// ローカルタイムゾーン基準で YYYY-MM-DD を返す（toISOString()はUTCになるため使わない）
+const toYMD  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const prevYM = ym => { const d=new Date(ym+'-01'); d.setMonth(d.getMonth()-1); return toYM(d); };
 const fmt    = n => '¥' + Number(n).toLocaleString();
 const fmtN   = n => Number(n).toLocaleString();
@@ -2199,7 +2201,7 @@ function exportCSV() {
   const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8' });
   const a    = document.createElement('a');
   a.href     = URL.createObjectURL(blob);
-  a.download = `部活会計_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `部活会計_${toYMD(new Date())}.csv`;
   a.click();
   toast('CSVをダウンロードしました ✓');
 }
@@ -2259,8 +2261,8 @@ let bsAcct = 'cash';
 
 function openBottomSheet() {
   const today = new Date();
-  document.getElementById('bs-date').value    = today.toISOString().split('T')[0];
-  document.getElementById('bs-tr-date').value = today.toISOString().split('T')[0];
+  document.getElementById('bs-date').value    = toYMD(today);
+  document.getElementById('bs-tr-date').value = toYMD(today);
   document.getElementById('bs-sheet').classList.add('open');
   document.getElementById('bs-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -2538,7 +2540,7 @@ function openBudgetRecordModal(recordId = null) {
     submitBtn.textContent = '追加する';
 
     const today = new Date();
-    document.getElementById('budget-record-date').value = today.toISOString().split('T')[0];
+    document.getElementById('budget-record-date').value = toYMD(today);
     document.getElementById('budget-record-hours').value = '';
     document.getElementById('budget-record-remarks').value = '';
   }
@@ -2639,14 +2641,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const budgetMonth = document.getElementById('budget-month');
   if (budgetMonth && !budgetMonth.value) {
-    const today = new Date();
-    budgetMonth.value = today.toISOString().split('T')[0].slice(0, 7);
+    budgetMonth.value = toYM(new Date());
   }
 
   const budgetCategoryMonth = document.getElementById('budget-category-month');
   if (budgetCategoryMonth && !budgetCategoryMonth.value) {
-    const today = new Date();
-    budgetCategoryMonth.value = today.toISOString().split('T')[0].slice(0, 7);
+    budgetCategoryMonth.value = toYM(new Date());
   }
 
   const tabBtn1 = document.getElementById('tab-budget-court');
@@ -2933,7 +2933,7 @@ function openBudgetCategoryRecordModal(recordId = null) {
 
     budgetCategoryType = 'income';
     const today = new Date();
-    document.getElementById('budget-cat-date').value = today.toISOString().split('T')[0];
+    document.getElementById('budget-cat-date').value = toYMD(today);
     document.getElementById('budget-cat-amount').value = '';
     document.getElementById('budget-cat-remarks').value = '';
   }
