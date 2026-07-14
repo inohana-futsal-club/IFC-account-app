@@ -577,6 +577,20 @@
 
     <!-- ===== MODALS ===== -->
 
+    <!-- セッション切れ（閉じるボタンなし。再ログインするまで表示し続ける） -->
+    <div class="mbg" id="m-session-expired">
+      <div class="modal">
+        <div class="modal-title">セッションの有効期限が切れました</div>
+        <p style="font-size:13px;color:var(--tx2);line-height:1.6">
+          ログインの有効期限が切れたため、データの読み込み・保存ができません。<br>
+          下のボタンから再度ログインしてください（画面がリロードされます。保存済みのデータは失われませんが、入力中の内容は失われる場合があります）。
+        </p>
+        <div class="mact">
+          <button class="btn bp" style="width:100%" onclick="requestTokenViaRedirect()">再ログイン</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 取引編集 -->
     <div class="mbg" id="m-edit-tx">
       <div class="modal">

@@ -257,10 +257,17 @@ function signOut() {
 /* ================================================================
    SHEETS API HELPERS
 ================================================================ */
+// 401はアクセストークンの失効を示すため、呼び出し元で判別できるようにフラグを付ける
+function sheetsError(prefix, res) {
+  const err = new Error(`${prefix} error: ${res.status}`);
+  err.isSessionExpired = res.status === 401;
+  return err;
+}
+
 async function sheetsGet(range) {
   const url = `${API_BASE}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`;
   const res = await fetch(url, { headers:{ Authorization:`Bearer ${accessToken}` } });
-  if (!res.ok) throw new Error(`Sheets GET error: ${res.status}`);
+  if (!res.ok) throw sheetsError('Sheets GET', res);
   return (await res.json()).values || [];
 }
 
@@ -271,7 +278,7 @@ async function sheetsAppend(sheetName, rows) {
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
     body: JSON.stringify({ values: rows }),
   });
-  if (!res.ok) throw new Error(`Sheets APPEND error: ${res.status}`);
+  if (!res.ok) throw sheetsError('Sheets APPEND', res);
   return res.json();
 }
 
@@ -281,7 +288,7 @@ async function sheetsClear(sheetName) {
     method: 'POST',
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
   });
-  if (!res.ok) throw new Error(`Sheets CLEAR error: ${res.status}`);
+  if (!res.ok) throw sheetsError('Sheets CLEAR', res);
 }
 
 async function sheetsUpdate(range, values) {
@@ -291,7 +298,7 @@ async function sheetsUpdate(range, values) {
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
     body: JSON.stringify({ values }),
   });
-  if (!res.ok) throw new Error(`Sheets UPDATE error: ${res.status}`);
+  if (!res.ok) throw sheetsError('Sheets UPDATE', res);
 }
 
 /* ================================================================
@@ -330,7 +337,7 @@ async function sheetsDeleteRows(sheetName, rowNums) {
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
     body: JSON.stringify({ requests }),
   });
-  if (!res.ok) throw new Error(`Sheets DELETE ROW error: ${res.status}`);
+  if (!res.ok) throw sheetsError('Sheets DELETE ROW', res);
 }
 
 async function ensureSheets() {
@@ -340,6 +347,7 @@ async function ensureSheets() {
     const err = new Error('スプレッドシートにアクセスできません');
     // 403/404はアカウントにシートの閲覧・編集権限がないケースがほとんど
     err.isAccessDenied = res.status === 403 || res.status === 404;
+    err.isSessionExpired = res.status === 401;
     throw err;
   }
   const meta     = await res.json();
@@ -516,7 +524,8 @@ function saveSheet(fn) {
       console.error(e);
       failedSaves.push({ id: Date.now() + Math.random(), fn, error: e });
       updateSaveFailBanner();
-      toast('保存に失敗しました。再試行してください。');
+      if (e.isSessionExpired) showSessionExpiredModal();
+      else toast('保存に失敗しました。再試行してください。');
     }
     finally {
       pendingSaves--;
@@ -546,6 +555,12 @@ async function retryFailedSaves() {
   for (const item of toRetry) {
     await saveSheet(item.fn);
   }
+}
+
+// アクセストークン失効時に表示する。閉じるボタンは設けず、気づかず操作を
+// 続けてしまわないようにする（再ログインで解消するまで表示し続ける）
+function showSessionExpiredModal() {
+  openM('m-session-expired');
 }
 
 function txToRow(t) {
@@ -640,6 +655,10 @@ async function startApp() {
       accessToken = null;
       showLoginScreen();
       showLoginError();
+    } else if (e.isSessionExpired) {
+      // ローディング画面(z-index:499)の下に隠れないよう、先に非表示にしてからモーダルを出す
+      setLoading(false);
+      showSessionExpiredModal();
     } else {
       setLoading(true, 'データ読み込みに失敗しました。ページを再読み込みしてください。');
     }
