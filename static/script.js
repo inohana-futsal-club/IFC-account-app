@@ -362,6 +362,7 @@ async function ensureSheets() {
       [SH.BUDGET]: [['id','date','court_name','court_condition','hours','price_per_hour','amount','remarks']],
       [SH.BUDGET_SETTINGS]: [['id','court_name','court_condition','price_per_hour','remarks']],
       [SH.BUDGET_CATEGORY_RECORDS]: [['id','date','type','classification','category','amount','remarks']],
+      [SH.CARRYOVER]: [['fiscal_year','date','cash','bank','note']],
     };
     for (const name of toAdd) await sheetsUpdate(`${name}!A1`, headers[name]);
   }
