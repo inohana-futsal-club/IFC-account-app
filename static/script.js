@@ -3,7 +3,8 @@
 ================================================================ */
 const CLIENT_ID = '387302608037-et2svb68cnf7lm3gltpn67u3ovbplrjq.apps.googleusercontent.com';
 const SHEET_ID  = '1J-kv2Lwc4qBxVAvBGn0JCFS1BSc8UuXTwg1G2xY0nqc';
-const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets';
+// drive.fileはアプリが作成/開いたファイルのみにアクセスできる限定スコープ（バックアップの複製作成に使用）
+const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const API_BASE  = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
 
 const SH = {
@@ -258,7 +259,7 @@ function signOut() {
    SHEETS API HELPERS
 ================================================================ */
 // 401はアクセストークンの失効を示すため、呼び出し元で判別できるようにフラグを付ける
-function sheetsError(prefix, res) {
+function apiError(prefix, res) {
   const err = new Error(`${prefix} error: ${res.status}`);
   err.isSessionExpired = res.status === 401;
   return err;
@@ -267,7 +268,7 @@ function sheetsError(prefix, res) {
 async function sheetsGet(range) {
   const url = `${API_BASE}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`;
   const res = await fetch(url, { headers:{ Authorization:`Bearer ${accessToken}` } });
-  if (!res.ok) throw sheetsError('Sheets GET', res);
+  if (!res.ok) throw apiError('Sheets GET', res);
   return (await res.json()).values || [];
 }
 
@@ -278,7 +279,7 @@ async function sheetsAppend(sheetName, rows) {
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
     body: JSON.stringify({ values: rows }),
   });
-  if (!res.ok) throw sheetsError('Sheets APPEND', res);
+  if (!res.ok) throw apiError('Sheets APPEND', res);
   return res.json();
 }
 
@@ -288,7 +289,7 @@ async function sheetsClear(sheetName) {
     method: 'POST',
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
   });
-  if (!res.ok) throw sheetsError('Sheets CLEAR', res);
+  if (!res.ok) throw apiError('Sheets CLEAR', res);
 }
 
 async function sheetsUpdate(range, values) {
@@ -298,7 +299,7 @@ async function sheetsUpdate(range, values) {
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
     body: JSON.stringify({ values }),
   });
-  if (!res.ok) throw sheetsError('Sheets UPDATE', res);
+  if (!res.ok) throw apiError('Sheets UPDATE', res);
 }
 
 /* ================================================================
@@ -337,7 +338,7 @@ async function sheetsDeleteRows(sheetName, rowNums) {
     headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
     body: JSON.stringify({ requests }),
   });
-  if (!res.ok) throw sheetsError('Sheets DELETE ROW', res);
+  if (!res.ok) throw apiError('Sheets DELETE ROW', res);
 }
 
 async function ensureSheets() {
@@ -2303,6 +2304,26 @@ function exportCSV() {
   a.download = `部活会計_${toYMD(new Date())}.csv`;
   a.click();
   toast('CSVをダウンロードしました ✓');
+}
+
+// スプレッドシート全体をDrive API経由で複製し、手動バックアップとする
+// （drive.fileスコープが必要。古いスコープでログイン済みの場合は再ログインが必要）
+async function backupSpreadsheet() {
+  const name = `部活会計_backup_${toYMD(new Date())}`;
+  try {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${SHEET_ID}/copy`, {
+      method: 'POST',
+      headers: { Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw apiError('Drive COPY', res);
+    const file = await res.json();
+    toast(`バックアップを作成しました（${file.name || name}）✓`);
+  } catch (e) {
+    console.error(e);
+    if (e.isSessionExpired) showSessionExpiredModal();
+    else toast('バックアップの作成に失敗しました');
+  }
 }
 
 /* ================================================================
