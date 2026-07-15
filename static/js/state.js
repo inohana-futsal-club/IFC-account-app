@@ -55,8 +55,9 @@ let bsType = 'income';
 
 let bsAcct = 'cash';
 
-// data-action属性から呼び出すハンドラのレジストリ。各ドメインファイルが自分の
-// 担当分をここに登録する（onclick属性への文字列埋め込みを避けるため）。
+// data-click-action/data-change-action/data-input-action属性から呼び出す
+// ハンドラのレジストリ。各ドメインファイルが自分の担当分をここに登録する
+// （onclick属性への文字列埋め込みを避けるため）。
 const CLICK_ACTIONS  = {};
 const CHANGE_ACTIONS = {};
 const INPUT_ACTIONS  = {};

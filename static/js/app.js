@@ -365,6 +365,7 @@ function dispatchAction(registry, action, el, e) {
   const handler = registry[action];
   if (handler) { handler(el, e); return; }
   if (typeof window[action] === 'function') { window[action](); return; }
+  console.warn(`data-*-action="${action}" is not registered and no matching global function exists`);
 }
 
 document.addEventListener('click', (e) => {
