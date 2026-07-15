@@ -17,7 +17,7 @@
 
 ## 技術構成
 
-- フロントエンド：HTML / CSS / JavaScript（`index.html`, `static/script.js`, `static/style.css`）
+- フロントエンド：HTML / CSS / JavaScript（`index.html`, `static/js/`（機能別に分割されたJavaScript）, `static/style.css`）
 - 認証：Google Identity Services（OAuth）
 - データストア：Google Sheets API v4（スプレッドシートをDBとして利用）
 
@@ -30,10 +30,10 @@
    - 「APIとサービス」→「ライブラリ」で **Google Sheets API** と **Google Drive API**（バックアップ機能で使用）を有効化する
    - 「APIとサービス」→「認証情報」から OAuth 2.0 クライアントID（ウェブアプリケーション）を発行
    - 「承認済みのJavaScript生成元」にアプリを配信するURL（例：`http://localhost:8080`や本番URL）を追加
-   - 発行されたクライアントIDを `static/script.js` の `CLIENT_ID` に設定する
+   - 発行されたクライアントIDを `static/js/config.js` の `CLIENT_ID` に設定する
    - ※バックアップ機能追加に伴いOAuthスコープに`drive.file`を追加したため、既存ユーザーは次回ログイン時に権限の再同意が必要になります
 2. **スプレッドシートの用意**
-   - 新しいGoogleスプレッドシートを作成し、そのスプレッドシートIDを `static/script.js` の `SHEET_ID` に設定する（初回起動時に必要なシート・ヘッダーはアプリが自動で作成します）
+   - 新しいGoogleスプレッドシートを作成し、そのスプレッドシートIDを `static/js/config.js` の `SHEET_ID` に設定する（初回起動時に必要なシート・ヘッダーはアプリが自動で作成します）
 3. **利用者アカウントへの権限付与**
    - 会計担当者のGoogleアカウントに、上記スプレッドシートの**編集権限**を付与する
 
