@@ -92,10 +92,10 @@ function getFiscalYearLabel(fiscalYear) {
 }
 
 // 学年（入学年度の下2桁）は現在の会計年度から動的に生成する。
-// 新入生の入学年度（会計年度+1）を先頭に、そこから5年分（計6学年）を並べる
+// 新入生の入学年度（会計年度+1）を先頭に、そこから6年分（計7学年）を並べる
 function getGradeOptions() {
   const enteringYear = (getFiscalYear(new Date()) + 1) % 100;
-  return Array.from({ length: 6 }, (_, i) => String(enteringYear - i).padStart(2, '0'));
+  return Array.from({ length: 7 }, (_, i) => String(enteringYear - i).padStart(2, '0'));
 }
 
 function getAvailableFiscalYears() {
