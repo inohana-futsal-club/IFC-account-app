@@ -26,7 +26,6 @@ const SH = {
 ================================================================ */
 const ATTR_L     = { male:'男プレ', female:'女プレ', manager:'マネージャー', exec:'幹部上' };
 const ATTR_ORDER = { male:0, female:1, manager:2, exec:3 };
-const GRADE_ORDER = Object.fromEntries(getGradeOptions().map((g, i) => [parseInt(g), i]));
 
 // categoriesシートを新規作成した場合の初期科目（空だと科目セレクトが空になりclassificationが保存できないため）
 const DEFAULT_CATEGORIES = [
@@ -92,10 +91,38 @@ function getFiscalYearLabel(fiscalYear) {
 }
 
 // 学年（入学年度の下2桁）は現在の会計年度から動的に生成する。
-// 新入生の入学年度（会計年度+1）を先頭に、そこから6年分（計7学年）を並べる
+// 新入生の入学年度（会計年度+1）を先頭に、そこから5年分（計6学年）を並べる
+function getEnteringYear() {
+  return (getFiscalYear(new Date()) + 1) % 100;
+}
+
+// 学年の「新しさ」を表す値。0が最新（新入生）、値が大きいほど上級生・古い学年
+function getGradeAge(grade) {
+  return (getEnteringYear() - parseInt(grade, 10) + 100) % 100;
+}
+
 function getGradeOptions() {
-  const enteringYear = (getFiscalYear(new Date()) + 1) % 100;
-  return Array.from({ length: 7 }, (_, i) => String(enteringYear - i).padStart(2, '0'));
+  const baseGrades = Array.from({ length: 6 }, (_, i) => String(getEnteringYear() - i).padStart(2, '0'));
+
+  // 幹部上は基本の6学年より上級生でも現役として残るケースがあるため、
+  // 該当する部員がいればその学年も追加で表示する
+  const currentYm = toYM(new Date());
+  const execGrades = S.members
+    .filter(m => m.grade && !baseGrades.includes(m.grade) && getMemberAttrInMonth(m.id, currentYm) === 'exec')
+    .map(m => m.grade);
+
+  return [...baseGrades, ...new Set(execGrades)].sort((a, b) => getGradeAge(a) - getGradeAge(b));
+}
+
+// OB/OGの学年一覧（属性フィルターでOB/OGを選んだ時のみ学年プルダウンに使う）
+function getObGradeOptions() {
+  const currentYm = toYM(new Date());
+  const grades = new Set(
+    S.members
+      .filter(m => m.grade && getMemberStatus(m.id, currentYm) === 'ob')
+      .map(m => m.grade)
+  );
+  return Array.from(grades).sort((a, b) => getGradeAge(a) - getGradeAge(b));
 }
 
 function getAvailableFiscalYears() {
@@ -821,7 +848,7 @@ function sortedMembers() {
   // 属性の正はmember_periods側にあるため、現時点の属性で第2ソートキーを求める
   const currentYm = toYM(new Date());
   return [...S.members].sort((a,b) => {
-    const gd = GRADE_ORDER[parseInt(a.grade)] - GRADE_ORDER[parseInt(b.grade)];
+    const gd = getGradeAge(a.grade) - getGradeAge(b.grade);
     if (gd !== 0) return gd;
     const aOrder = ATTR_ORDER[getMemberAttrInMonth(a.id, currentYm)] ?? 99;
     const bOrder = ATTR_ORDER[getMemberAttrInMonth(b.id, currentYm)] ?? 99;
@@ -1310,6 +1337,7 @@ const attrBadge = attr => badge(attr, ATTR_L[attr]);
 const obBadge   = () => badge('ob', 'OB/OG');
 
 function renderMembers() {
+  populateGradeSelects();
   const fa = document.getElementById('f-attr')?.value  || '';
   const fg = document.getElementById('f-grade')?.value || '';
   const today = new Date();
@@ -1317,15 +1345,14 @@ function renderMembers() {
 
   let ms   = sortedMembers();
 
-  // フィルタリング
-  if (fa) ms = ms.filter(m => {
+  // 属性でフィルター（未指定時はOB/OGを除外する。OB/OGはプルダウンで明示的に選んだ時のみ表示）
+  ms = ms.filter(m => {
     const status = getMemberStatus(m.id, currentYm);
-    if (fa === 'ob') {
-      return status === 'ob';
-    } else {
-      const attr = getMemberAttrInMonth(m.id, currentYm);
-      return attr === fa;
-    }
+    if (fa === 'ob') return status === 'ob';
+    if (status === 'ob') return false;
+    if (!fa) return true;
+    const attr = getMemberAttrInMonth(m.id, currentYm);
+    return attr === fa;
   });
 
   // 学年でフィルター
@@ -1882,6 +1909,7 @@ async function bulkDelete() {
    FEES
 ================================================================ */
 function renderFee() {
+  populateGradeSelects();
   let ym = document.getElementById('fee-month')?.value;
   if (!ym) return;
 
@@ -2483,14 +2511,25 @@ function closeM(id) {
 
 // 学年セレクトの選択肢を動的に生成する（毎年コードを書き換えなくて済むように）
 function populateGradeSelects() {
-  const optionsHtml = getGradeOptions().map(g => `<option value="${g}">${g}</option>`).join('');
+  const optionsHtml   = getGradeOptions().map(g => `<option value="${g}">${g}</option>`).join('');
+  const obOptionsHtml = getObGradeOptions().map(g => `<option value="${g}">${g}</option>`).join('');
+
   ['ma-grade', 'me-grade'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.innerHTML = optionsHtml;
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = optionsHtml;
+    if (prev) el.value = prev;  // 未選択(空)の場合は既定の先頭オプションのままにする
   });
-  ['f-grade', 'fee-f-grade'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = '<option value="">すべての学年</option>' + optionsHtml;
+
+  // 属性フィルターでOB/OGを選んでいる時だけ、学年もOB/OGの学年一覧に切り替える
+  [{ gradeId: 'f-grade', attrId: 'f-attr' }, { gradeId: 'fee-f-grade', attrId: 'fee-f-attr' }].forEach(({ gradeId, attrId }) => {
+    const el = document.getElementById(gradeId);
+    if (!el) return;
+    const isObMode = document.getElementById(attrId)?.value === 'ob';
+    const prev = el.value;
+    el.innerHTML = '<option value="">すべての学年</option>' + (isObMode ? obOptionsHtml : optionsHtml);
+    if (prev) el.value = prev;
   });
 }
 
