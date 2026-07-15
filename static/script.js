@@ -116,6 +116,12 @@ function getAvailableFiscalYears() {
   return Array.from(years).sort((a, b) => b - a);
 }
 
+// 会計年度の期首残高（前年度からの繰越）。carryover_recordsに登録がなければ0
+function getOpeningBalance(fiscalYear) {
+  const rec = S.carryoverRecords.find(r => r.fiscal_year === String(fiscalYear));
+  return { cash: rec ? rec.cash : 0, bank: rec ? rec.bank : 0 };
+}
+
 /* ================================================================
    AUTH STATE
 ================================================================ */
@@ -741,9 +747,13 @@ function showPage(n) {
 /* ================================================================
    CALC
 ================================================================ */
-function calcBal() {
-  let cash=0, bank=0;
+// 会計年度fiscalYearの期首繰越＋その年度の増減で残高を計算する（省略時は選択中の年度）
+function calcBal(fiscalYear = currentFiscalYear) {
+  const range = getFiscalYearRange(fiscalYear);
+  const opening = getOpeningBalance(fiscalYear);
+  let cash = opening.cash, bank = opening.bank;
   S.txs.forEach(t => {
+    if (!t.date || !range.some(m => t.date.startsWith(m))) return;
     if (t.type==='income')
       { if(t.acct==='cash') cash+=t.amount; else bank+=t.amount; }
     else if (t.type==='expense')
@@ -1180,6 +1190,7 @@ function showLedger(type) {
 
 function renderCashLedger(acct, title) {
   const range = getFiscalYearRange(currentFiscalYear);
+  const opening = getOpeningBalance(currentFiscalYear)[acct];
   const txs = S.txs.filter(t => {
     // 会計年度フィルタ追加
     if (!t.date || !range.some(m => t.date.startsWith(m))) return false;
@@ -1187,8 +1198,17 @@ function renderCashLedger(acct, title) {
     return t.acct===acct;
   }).sort((a,b) => a.date.localeCompare(b.date));
 
-  let bal=0, totalIn=0, totalOut=0, rows='';
-  txs.forEach(t => {
+  let bal=opening, totalIn=0, totalOut=0;
+  const carryoverRow = `<tr class="carryover-row">
+    <td class="num">-</td>
+    <td>-</td>
+    <td>前年度繰越</td>
+    <td class="num"></td>
+    <td class="num"></td>
+    <td class="num ${bal>=0?'bal-pos':'bal-neg'}">${fmtN(bal)}</td>
+    <td colspan="2"></td>
+  </tr>`;
+  const txRows = txs.map(t => {
     let inAmt=0, outAmt=0, label=t.desc;
     if (t.type==='income')  { inAmt=t.amount; bal+=t.amount; totalIn+=t.amount; }
     else if (t.type==='expense') { outAmt=t.amount; bal-=t.amount; totalOut+=t.amount; }
@@ -1196,7 +1216,7 @@ function renderCashLedger(acct, title) {
       if (t.acct===acct)  { outAmt=t.amount; bal-=t.amount; totalOut+=t.amount; label=`振替出金→${t.toAcct==='cash'?'現金':'銀行'}`; }
       else                { inAmt=t.amount;  bal+=t.amount; totalIn+=t.amount;  label=`振替入金←${t.acct==='cash'?'現金':'銀行'}`; }
     }
-    rows += `<tr>
+    return `<tr>
       <td class="num">${escapeHtml(t.date.replace(/-/g, '/'))}</td>
       <td>${escapeHtml(t.cat)||'—'}</td>
       <td>${escapeHtml(label)}</td>
@@ -1206,12 +1226,12 @@ function renderCashLedger(acct, title) {
       <td class="text-center"><button class="btn bs sm" onclick="openEditTx(${t.id})">編集</button></td>
       <td class="text-center"><button class="btn bd sm" onclick="if(confirm('削除しますか？'))delTx(${t.id})">削除</button></td>
     </tr>`;
-  });
+  }).join('');
   return `<div class="card card-no-pad overflow-hidden">
     <div class="card-header">${title}</div>
     <div class="overflow-x-auto"><table class="ltbl">
       <thead><tr><th>日付</th><th>科目</th><th>摘要</th><th class="text-right">収入金額</th><th class="text-right">支出金額</th><th class="text-right">差引残高</th><th>編集</th><th>削除</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="8" class="empty">データがありません</td></tr>'}</tbody>
+      <tbody>${carryoverRow}${txRows||'<tr><td colspan="8" class="empty">データがありません</td></tr>'}</tbody>
       <tfoot><tr><td colspan="3" class="font-bold">合計</td>
         <td class="num text-income">${fmtN(totalIn)}</td>
         <td class="num text-expense">${fmtN(totalOut)}</td>
@@ -3123,6 +3143,8 @@ function switchGlobalFiscalYear() {
     }
   });
 
+  // ヘッダーの残高は年度をスコープにしているため、年度切替時に再描画する
+  renderHdr();
   rerenderCurrentPage();
 }
 
@@ -3158,6 +3180,72 @@ function initGlobalFiscalYear() {
       fiscalSelect.appendChild(option);
     });
   }
+}
+
+/* ================================================================
+   CARRYOVER（前年度繰越）
+================================================================ */
+// 繰越登録の対象年度の候補。既存の会計年度に加え、まだ繰越が登録されていない
+// 「次年度」も選べるようにする（年度末に当年度を締めて翌年度分を登録する運用を想定）
+function getCarryoverYearOptions() {
+  const years = new Set(getAvailableFiscalYears());
+  years.add(currentFiscalYear);
+  years.add(currentFiscalYear + 1);
+  return Array.from(years).sort((a, b) => b - a);
+}
+
+function openCarryoverModal() {
+  const select = document.getElementById('co-fiscal-year');
+  const years = getCarryoverYearOptions();
+  select.innerHTML = years.map(y => `<option value="${y}">${escapeHtml(getFiscalYearLabel(y))}</option>`).join('');
+  // 当年度を締めて翌年度分を登録する操作が最も多いと想定し、デフォルトは翌年度
+  const defaultYear = currentFiscalYear + 1;
+  select.value = String(years.includes(defaultYear) ? defaultYear : years[0]);
+  document.getElementById('co-date').value = toYMD(new Date());
+  fillCarryoverForm();
+  openM('m-carryover');
+}
+
+function onCarryoverYearChange() { fillCarryoverForm(); }
+
+function fillCarryoverForm() {
+  const fiscalYear = parseInt(document.getElementById('co-fiscal-year').value);
+  const existing = S.carryoverRecords.find(r => r.fiscal_year === String(fiscalYear));
+  const noteEl = document.getElementById('co-suggest-note');
+  if (existing) {
+    document.getElementById('co-cash').value = existing.cash;
+    document.getElementById('co-bank').value = existing.bank;
+    document.getElementById('co-note').value = existing.note;
+    noteEl.textContent = `${getFiscalYearLabel(fiscalYear)}の繰越は既に登録されています。保存すると上書きされます。`;
+  } else {
+    const prevBal = calcBal(fiscalYear - 1);
+    document.getElementById('co-cash').value = prevBal.cash;
+    document.getElementById('co-bank').value = prevBal.bank;
+    document.getElementById('co-note').value = '前年度繰越金';
+    noteEl.textContent = `${getFiscalYearLabel(fiscalYear - 1)}の期末残高（現金${fmt(prevBal.cash)}・銀行${fmt(prevBal.bank)}）を提案値として入力しています。必要に応じて修正してください。`;
+  }
+}
+
+async function saveCarryover() {
+  const fiscalYear = document.getElementById('co-fiscal-year').value;
+  const cash = Number(document.getElementById('co-cash').value) || 0;
+  const bank = Number(document.getElementById('co-bank').value) || 0;
+  const date = document.getElementById('co-date').value;
+  const note = document.getElementById('co-note').value.trim() || '前年度繰越金';
+  if (!date) { toast('登録日を入力してください'); return; }
+
+  S.carryoverRecords = S.carryoverRecords.filter(r => r.fiscal_year !== fiscalYear);
+  S.carryoverRecords.push({ fiscal_year: fiscalYear, date, cash, bank, note });
+
+  closeM('m-carryover');
+  render(); rerenderCurrentPage();
+  toast('繰越を登録しました ✓');
+
+  const rows = S.carryoverRecords.map(r => [r.fiscal_year, r.date, r.cash, r.bank, r.note]);
+  await saveSheet(async () => {
+    await sheetsClear(SH.CARRYOVER);
+    if (rows.length > 0) await sheetsAppend(SH.CARRYOVER, rows);
+  });
 }
 
 /* ================================================================

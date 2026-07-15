@@ -62,6 +62,7 @@
           <div class="menu-section">
             <label>📅 会計年度</label>
             <select id="global-fiscal-year" onchange="switchGlobalFiscalYear()"></select>
+            <button class="btn bs sm" onclick="openCarryoverModal()" style="width:100%;margin-top:8px;font-size:12px">↩ 前年度繰越を登録</button>
           </div>
 
           <button class="btn bs" onclick="backupSpreadsheet()" style="width:100%;margin-top:12px;font-size:12px">💾 バックアップを作成</button>
@@ -986,6 +987,40 @@
         <div class="mact">
           <button class="btn bs" onclick="closeM('m-budget-category-record')">キャンセル</button>
           <button class="btn bp" id="budget-cat-submit-btn" onclick="addBudgetCategoryRecord()">追加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 前年度繰越の登録 -->
+    <div class="mbg" id="m-carryover" role="dialog" aria-modal="true" aria-labelledby="m-carryover-title">
+      <div class="modal">
+        <div class="modal-title" id="m-carryover-title">前年度繰越の登録</div>
+        <div class="fg">
+          <div class="fi full">
+            <label for="co-fiscal-year">対象年度</label>
+            <select id="co-fiscal-year" name="carryover-fiscal-year" autocomplete="off" onchange="onCarryoverYearChange()"></select>
+          </div>
+          <div class="fi">
+            <label for="co-cash">現金繰越額（円）</label>
+            <input type="number" id="co-cash" name="carryover-cash" inputmode="numeric" autocomplete="off">
+          </div>
+          <div class="fi">
+            <label for="co-bank">銀行繰越額（円）</label>
+            <input type="number" id="co-bank" name="carryover-bank" inputmode="numeric" autocomplete="off">
+          </div>
+          <div class="fi">
+            <label for="co-date">登録日</label>
+            <input type="date" id="co-date" name="carryover-date" autocomplete="off">
+          </div>
+          <div class="fi full">
+            <label for="co-note">備考</label>
+            <input type="text" id="co-note" name="carryover-note" autocomplete="off">
+          </div>
+        </div>
+        <p id="co-suggest-note" style="font-size:12px;color:var(--tx2);line-height:1.5"></p>
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-carryover')">キャンセル</button>
+          <button class="btn bp" onclick="saveCarryover()">保存</button>
         </div>
       </div>
     </div>
