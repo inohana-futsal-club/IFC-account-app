@@ -100,11 +100,11 @@ function renderMembers() {
         }
 
         return `<tr class="member-row" id="member-row-${m.id}">
-          <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
+          <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" data-change-action="memberCheckboxChange" data-id="${m.id}"></td>
           <td class="text-center text-secondary-color">${m.grade}</td>
           <td class="font-semibold">${escapeHtml(m.name)}</td>
           <td class="text-center">${attrDisplay}</td>
-          <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
+          <td class="text-center"><button class="btn bs sm" data-click-action="openEdit" data-id="${m.id}">編集</button></td>
         </tr>`;
       }).join('');
   updateBulkButtons();
@@ -215,8 +215,8 @@ function renderMemberPeriods(memberId) {
           <div style="font-weight:600">${ATTR_L[p.attr]}</div>
         </div>
         <div style="display:flex;gap:6px">
-          <button class="btn bs sm" onclick="openEditPeriod(${p.id})">編集</button>
-          <button class="btn bd sm" onclick="deleteMemberPeriod(${p.id})">削除</button>
+          <button class="btn bs sm" data-click-action="openEditPeriod" data-id="${p.id}">編集</button>
+          <button class="btn bd sm" data-click-action="deleteMemberPeriod" data-id="${p.id}">削除</button>
         </div>
       </div>
     </div>
@@ -627,3 +627,19 @@ async function bulkDelete() {
     saveSheet(() => sheetsUpdateRow(SH.MEMBER_PERIODS, t.row, periodToRow(t.openPeriod)))
   ));
 }
+
+Object.assign(CLICK_ACTIONS, {
+  openEdit: (el) => openEdit(Number(el.dataset.id)),
+  switchEditTab: (el) => switchEditTab(el.dataset.tab),
+  openEditPeriod: (el) => openEditPeriod(Number(el.dataset.id)),
+  deleteMemberPeriod: (el) => deleteMemberPeriod(Number(el.dataset.id)),
+});
+
+Object.assign(CHANGE_ACTIONS, {
+  toggleSelectAll: (el) => toggleSelectAll(el.checked),
+  memberCheckboxChange: (el) => {
+    updateMemberRowStyle(Number(el.dataset.id));
+    updateBulkButtons();
+  },
+  handleBulkAddFile: (el, e) => handleBulkAddFile(e),
+});

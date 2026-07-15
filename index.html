@@ -42,7 +42,7 @@
         <div id="save-ind">保存中...</div>
         <div id="save-fail-ind">
           <span id="save-fail-count"></span>
-          <button onclick="retryFailedSaves()">再試行</button>
+          <button data-click-action="retryFailedSaves">再試行</button>
         </div>
         <div class="hbals">
           <div class="hbal"><span class="hl">現金</span><span class="hv" id="h-cash" style="color:var(--csh)">¥0</span></div>
@@ -51,7 +51,7 @@
           <div class="hdiv"></div>
           <div class="hbal"><span class="hl">合計</span><span class="hv" id="h-total">¥0</span></div>
         </div>
-        <button class="btn bs sm" onclick="toggleUserMenu()" style="flex-shrink:0;font-size:11px;padding:4px 10px">☰ メニュー</button>
+        <button class="btn bs sm" data-click-action="toggleUserMenu" style="flex-shrink:0;font-size:11px;padding:4px 10px">☰ メニュー</button>
       </header>
 
       <!-- User Menu Dropdown -->
@@ -61,43 +61,43 @@
 
           <div class="menu-section">
             <label>📅 会計年度</label>
-            <select id="global-fiscal-year" onchange="switchGlobalFiscalYear()"></select>
-            <button class="btn bs sm" onclick="openCarryoverModal()" style="width:100%;margin-top:8px;font-size:12px">↩ 前年度繰越を登録</button>
+            <select id="global-fiscal-year" data-change-action="switchGlobalFiscalYear"></select>
+            <button class="btn bs sm" data-click-action="openCarryoverModal" style="width:100%;margin-top:8px;font-size:12px">↩ 前年度繰越を登録</button>
           </div>
 
-          <button class="btn bs" onclick="backupSpreadsheet()" style="width:100%;margin-top:12px;font-size:12px">💾 バックアップを作成</button>
-          <button class="btn bs" onclick="signOut()" style="width:100%;margin-top:12px;font-size:12px">ログアウト</button>
+          <button class="btn bs" data-click-action="backupSpreadsheet" style="width:100%;margin-top:12px;font-size:12px">💾 バックアップを作成</button>
+          <button class="btn bs" data-click-action="signOut" style="width:100%;margin-top:12px;font-size:12px">ログアウト</button>
         </div>
       </div>
 
       <!-- Mobile bottom nav -->
       <nav id="bottom-nav">
         <div class="bnav-inner">
-          <button class="bnav-btn active" onclick="showPage('dashboard')">
+          <button class="bnav-btn active" data-click-action="showPage" data-page="dashboard">
             <span class="bnav-icon">🏠</span>
             <span class="bnav-label">ホーム</span>
           </button>
-          <button class="bnav-btn" onclick="showPage('transactions')">
+          <button class="bnav-btn" data-click-action="showPage" data-page="transactions">
             <span class="bnav-icon">＋</span>
             <span class="bnav-label">収支入力</span>
           </button>
-          <button class="bnav-btn" onclick="showPage('ledger')">
+          <button class="bnav-btn" data-click-action="showPage" data-page="ledger">
             <span class="bnav-icon">📒</span>
             <span class="bnav-label">帳簿</span>
           </button>
-          <button class="bnav-btn" onclick="showPage('members')">
+          <button class="bnav-btn" data-click-action="showPage" data-page="members">
             <span class="bnav-icon">👥</span>
             <span class="bnav-label">部員</span>
           </button>
-          <button class="bnav-btn" onclick="showPage('fees')">
+          <button class="bnav-btn" data-click-action="showPage" data-page="fees">
             <span class="bnav-icon">💴</span>
             <span class="bnav-label">部費</span>
           </button>
-          <button class="bnav-btn" onclick="showPage('budget')">
+          <button class="bnav-btn" data-click-action="showPage" data-page="budget">
             <span class="bnav-icon">💰</span>
             <span class="bnav-label">予算</span>
           </button>
-          <button class="bnav-btn" onclick="showPage('report')">
+          <button class="bnav-btn" data-click-action="showPage" data-page="report">
             <span class="bnav-icon">📊</span>
             <span class="bnav-label">レポート</span>
           </button>
@@ -119,14 +119,14 @@
             <div class="ctitle">部費回収状況（今月）</div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
               <span id="fee-dash-text" style="font-size:13px;color:var(--tx2)">—</span>
-              <button class="btn bs sm" onclick="showPage('fees')">詳細へ</button>
+              <button class="btn bs sm" data-click-action="showPage" data-page="fees">詳細へ</button>
             </div>
             <div class="pbar"><div class="pfill" id="fee-prog" style="width:0%"></div></div>
           </div>
 
           <div class="sh">
             <div class="st">最近の取引</div>
-            <button class="btn bs sm" onclick="showPage('transactions')">すべて見る</button>
+            <button class="btn bs sm" data-click-action="showPage" data-page="transactions">すべて見る</button>
           </div>
           <div id="recent-list"></div>
         </div>
@@ -141,17 +141,17 @@
               <fieldset class="fieldset-reset mb-12">
                 <legend class="mb-4" style="font-size:0.9em">種別</legend>
                 <div class="tog3">
-                  <button class="tbtn income on" id="t-income"   aria-pressed="true"  onclick="setType('income')">収入</button>
-                  <button class="tbtn expense"   id="t-expense"  aria-pressed="false" onclick="setType('expense')">支出</button>
-                  <button class="tbtn transfer"  id="t-transfer" aria-pressed="false" onclick="setType('transfer')">口座振替</button>
+                  <button class="tbtn income on" id="t-income"   aria-pressed="true"  data-click-action="setType" data-type="income">収入</button>
+                  <button class="tbtn expense"   id="t-expense"  aria-pressed="false" data-click-action="setType" data-type="expense">支出</button>
+                  <button class="tbtn transfer"  id="t-transfer" aria-pressed="false" data-click-action="setType" data-type="transfer">口座振替</button>
                 </div>
               </fieldset>
               <div id="normal-fields">
                 <fieldset class="fieldset-reset mb-12">
                   <legend class="mb-4" style="font-size:0.9em">口座</legend>
                   <div class="tog2">
-                    <button class="tbtn cash on" id="a-cash" aria-pressed="true"  onclick="setAcct('cash')">現金</button>
-                    <button class="tbtn bank"    id="a-bank" aria-pressed="false" onclick="setAcct('bank')">銀行預金</button>
+                    <button class="tbtn cash on" id="a-cash" aria-pressed="true"  data-click-action="setAcct" data-acct="cash">現金</button>
+                    <button class="tbtn bank"    id="a-bank" aria-pressed="false" data-click-action="setAcct" data-acct="bank">銀行預金</button>
                   </div>
                 </fieldset>
                 <div class="fg">
@@ -169,13 +169,13 @@
                   </div>
                   <div class="fi full">
                     <label for="tx-cls">科目分類</label>
-                    <select id="tx-cls" name="transaction-class" onchange="updateTxCategories()" autocomplete="off"></select>
+                    <select id="tx-cls" name="transaction-class" data-change-action="updateTxCategories" autocomplete="off"></select>
                   </div>
                   <div class="fi full">
                     <label for="tx-cat">科目</label>
                     <select id="tx-cat" name="transaction-category" autocomplete="off"></select>
                   </div>
-                  <button class="btn bs sm" style="width:100%" onclick="openCategoryModal()">科目設定</button>
+                  <button class="btn bs sm" style="width:100%" data-click-action="openCategoryModal">科目設定</button>
                   <div class="fi full"><label for="tx-note">備考</label><textarea id="tx-note" name="transaction-note" placeholder="任意" autocomplete="off"></textarea></div>
                 </div>
               </div>
@@ -193,16 +193,16 @@
                   <div class="fi full"><label for="tr-note">備考</label><textarea id="tr-note" name="transfer-note" placeholder="任意" autocomplete="off"></textarea></div>
                 </div>
               </div>
-              <button class="btn bp" style="width:100%;margin-top:12px" onclick="addTx()">追加する</button>
+              <button class="btn bp" style="width:100%;margin-top:12px" data-click-action="addTx">追加する</button>
             </div>
             <div>
               <div class="sh">
                 <div class="st">取引一覧</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <select id="f-acct" name="filter-account" onchange="renderTx()" style="font-size:12px;padding:5px 8px" autocomplete="off">
+                  <select id="f-acct" name="filter-account" data-change-action="renderTx" style="font-size:12px;padding:5px 8px" autocomplete="off">
                     <option value="">すべての口座</option><option value="cash">現金</option><option value="bank">銀行</option>
                   </select>
-                  <select id="f-type" name="filter-type" onchange="renderTx()" style="font-size:12px;padding:5px 8px" autocomplete="off">
+                  <select id="f-type" name="filter-type" data-change-action="renderTx" style="font-size:12px;padding:5px 8px" autocomplete="off">
                     <option value="">すべて</option><option value="income">収入</option>
                     <option value="expense">支出</option><option value="transfer">口座振替</option>
                   </select>
@@ -223,13 +223,13 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <div class="sh">
                 <div class="st">取引一覧</div>
-                <button class="btn bp sm" onclick="openBottomSheet()">＋ 追加</button>
+                <button class="btn bp sm" data-click-action="openBottomSheet">＋ 追加</button>
               </div>
               <div style="display:flex;gap:6px">
-                <select id="f-acct-sp" name="filter-account-sp" onchange="renderTx()" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
+                <select id="f-acct-sp" name="filter-account-sp" data-change-action="renderTx" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
                   <option value="">すべて</option><option value="cash">現金</option><option value="bank">銀行</option>
                 </select>
-                <select id="f-type-sp" name="filter-type-sp" onchange="renderTx()" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
+                <select id="f-type-sp" name="filter-type-sp" data-change-action="renderTx" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
                   <option value="">収支</option><option value="income">収入</option>
                   <option value="expense">支出</option><option value="transfer">振替</option>
                 </select>
@@ -240,23 +240,23 @@
         </div>
 
         <!-- ボトムシート（スマホ用） -->
-        <div class="bs-overlay" id="bs-overlay" onclick="closeBottomSheet()"></div>
+        <div class="bs-overlay" id="bs-overlay" data-click-action="closeBottomSheet"></div>
         <div class="bs-sheet" id="bs-sheet">
           <div class="bs-handle-wrap"><div class="bs-handle"></div></div>
           <div class="bs-inner">
             <div class="bs-header">
               <div class="bs-title">取引を追加</div>
-              <button class="bs-close" onclick="closeBottomSheet()">✕</button>
+              <button class="bs-close" data-click-action="closeBottomSheet">✕</button>
             </div>
             <div class="bs-tog3">
-              <button class="bs-tbtn income on" aria-pressed="true"  onclick="setBsType('income',this)">収入</button>
-              <button class="bs-tbtn expense"   aria-pressed="false" onclick="setBsType('expense',this)">支出</button>
-              <button class="bs-tbtn transfer"  aria-pressed="false" onclick="setBsType('transfer',this)">振替</button>
+              <button class="bs-tbtn income on" aria-pressed="true"  data-click-action="setBsType" data-type="income">収入</button>
+              <button class="bs-tbtn expense"   aria-pressed="false" data-click-action="setBsType" data-type="expense">支出</button>
+              <button class="bs-tbtn transfer"  aria-pressed="false" data-click-action="setBsType" data-type="transfer">振替</button>
             </div>
             <div id="bs-normal">
               <div class="bs-tog2">
-                <button class="bs-abtn cash on" onclick="setBsAcct('cash',this)">現金</button>
-                <button class="bs-abtn bank"    onclick="setBsAcct('bank',this)">銀行預金</button>
+                <button class="bs-abtn cash on" data-click-action="setBsAcct" data-acct="cash">現金</button>
+                <button class="bs-abtn bank"    data-click-action="setBsAcct" data-acct="bank">銀行預金</button>
               </div>
               <div class="bs-field">
                 <label class="bs-label" for="bs-date">日付</label>
@@ -273,7 +273,7 @@
               <div class="bs-row2">
                 <div class="bs-field">
                   <label class="bs-label" for="bs-cls">科目分類</label>
-                  <select id="bs-cls" name="bs-class" class="bs-input" onchange="updateBsCategories()" autocomplete="off"></select>
+                  <select id="bs-cls" name="bs-class" class="bs-input" data-change-action="updateBsCategories" autocomplete="off"></select>
                 </div>
                 <div class="bs-field">
                   <label class="bs-label" for="bs-cat">科目</label>
@@ -314,7 +314,7 @@
                 <input type="text" id="bs-tr-desc" name="bs-transfer-description" class="bs-input" placeholder="例：現金引き出し" autocomplete="off">
               </div>
             </div>
-            <button class="bs-submit" onclick="addTxFromSheet()">追加する</button>
+            <button class="bs-submit" data-click-action="addTxFromSheet">追加する</button>
           </div>
         </div>
 
@@ -322,13 +322,13 @@
         <div class="page" id="page-ledger">
           <div class="sh" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
             <div class="st">帳簿</div>
-            <button class="btn bp sm" onclick="showPage('categories')">⚙ 科目設定</button>
+            <button class="btn bp sm" data-click-action="showPage" data-page="categories">⚙ 科目設定</button>
           </div>
           <div class="tab-pills" id="ledger-tabs">
-            <button class="pill active" onclick="showLedger('cash')">現金出納帳</button>
-            <button class="pill" onclick="showLedger('bank')">預金出納帳</button>
-            <button class="pill" onclick="showLedger('cat')">科目別台帳</button>
-            <button class="pill" onclick="showLedger('summary')">収支計算書</button>
+            <button class="pill active" data-click-action="showLedger" data-ledger="cash">現金出納帳</button>
+            <button class="pill" data-click-action="showLedger" data-ledger="bank">預金出納帳</button>
+            <button class="pill" data-click-action="showLedger" data-ledger="cat">科目別台帳</button>
+            <button class="pill" data-click-action="showLedger" data-ledger="summary">収支計算書</button>
           </div>
           <div id="ledger-content"></div>
         </div>
@@ -338,19 +338,19 @@
           <div class="sh">
             <div class="st">部員名簿</div>
             <div style="display:flex;gap:6px">
-              <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
-              <button class="btn bp sm" onclick="openM('m-bulk-add')">⬆ 一括登録</button>
-              <button class="btn bs sm" onclick="bulkChangeAttr()" style="display:none" id="bulk-change-btn">属性変更</button>
-              <button class="btn bd sm" onclick="bulkDelete()" style="display:none" id="bulk-delete-btn">一括退部</button>
+              <button class="btn bp sm" data-click-action="openM" data-modal="m-add">＋ 部員追加</button>
+              <button class="btn bp sm" data-click-action="openM" data-modal="m-bulk-add">⬆ 一括登録</button>
+              <button class="btn bs sm" data-click-action="bulkChangeAttr" style="display:none" id="bulk-change-btn">属性変更</button>
+              <button class="btn bd sm" data-click-action="bulkDelete" style="display:none" id="bulk-delete-btn">一括退部</button>
             </div>
           </div>
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-            <select id="f-attr" name="filter-attribute" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="f-attr" name="filter-attribute" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての属性</option><option value="male">男プレ</option>
               <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
               <option value="ob">OB/OG</option>
             </select>
-            <select id="f-grade" name="filter-grade" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="f-grade" name="filter-grade" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <!-- 選択肢はJSのpopulateGradeSelects()が動的に生成する -->
             </select>
           </div>
@@ -366,7 +366,7 @@
               <thead>
                 <tr>
                   <th style="text-align:center">
-                    <input type="checkbox" id="select-all-members" aria-label="すべての部員を選択" onchange="toggleSelectAll(this.checked)">
+                    <input type="checkbox" id="select-all-members" aria-label="すべての部員を選択" data-change-action="toggleSelectAll">
                   </th>
                   <th style="text-align:center">学年</th>
                   <th>氏名</th>
@@ -383,7 +383,7 @@
         <div class="page" id="page-fees">
           <div class="sh">
             <div class="st">属性別部費設定</div>
-            <button class="btn bs sm" onclick="openFeeModal()">⚙ 設定を編集</button>
+            <button class="btn bs sm" data-click-action="openFeeModal">⚙ 設定を編集</button>
           </div>
           <div class="fee-setting-row" id="fee-setting-view"></div>
 
@@ -393,7 +393,7 @@
             <div class="st">月別回収管理</div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap">
               <label for="fee-month" style="font-size:12px;color:var(--tx2)">対象月</label>
-              <input type="month" id="fee-month" name="fee-month" onchange="renderFee()" style="font-size:13px;padding:6px 10px" autocomplete="off">
+              <input type="month" id="fee-month" name="fee-month" data-change-action="renderFee" style="font-size:13px;padding:6px 10px" autocomplete="off">
             </div>
           </div>
 
@@ -417,14 +417,14 @@
           </div>
 
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-            <select id="fee-f-attr" name="fee-filter-attr" onchange="renderFee()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="fee-f-attr" name="fee-filter-attr" data-change-action="renderFee" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての属性</option>
               <option value="male">男プレ</option>
               <option value="female">女プレ</option>
               <option value="manager">マネージャー</option>
               <option value="exec">幹部上</option>
             </select>
-            <select id="fee-f-grade" name="fee-filter-grade" onchange="renderFee()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="fee-f-grade" name="fee-filter-grade" data-change-action="renderFee" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <!-- 選択肢はJSのpopulateGradeSelects()が動的に生成する -->
             </select>
           </div>
@@ -462,7 +462,7 @@
         <div class="page" id="page-categories">
           <div class="sh">
             <div class="st">科目管理</div>
-            <button class="btn bs sm" onclick="showPage('ledger')">← 帳簿に戻る</button>
+            <button class="btn bs sm" data-click-action="showPage" data-page="ledger">← 帳簿に戻る</button>
           </div>
           <div id="categories-page-content"></div>
         </div>
@@ -489,7 +489,7 @@
           <div class="card">
             <div class="ctitle">データ出力</div>
             <p style="font-size:13px;color:var(--tx2);margin-bottom:10px">取引データをCSVで書き出せます。</p>
-            <button class="btn bp" onclick="exportCSV()">CSVをダウンロード</button>
+            <button class="btn bp" data-click-action="exportCSV">CSVをダウンロード</button>
           </div>
         </div>
 
@@ -497,13 +497,13 @@
         <div class="page" id="page-budget">
           <div class="sh">
             <div class="st">予算管理</div>
-            <button class="btn bp sm" onclick="openBudgetSettingsModal()">⚙ コート代設定</button>
+            <button class="btn bp sm" data-click-action="openBudgetSettingsModal">⚙ コート代設定</button>
           </div>
 
           <!-- タブ -->
           <div style="display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:12px;padding-bottom:8px">
-            <button class="btn bp sm active" id="tab-budget-court" onclick="switchBudgetTab('court')" style="font-size:12px">🏟️ コート</button>
-            <button class="btn bs sm" id="tab-budget-category" onclick="switchBudgetTab('category')" style="font-size:12px">📋 その他</button>
+            <button class="btn bp sm active" id="tab-budget-court" data-click-action="switchBudgetTab" data-tab="court" style="font-size:12px">🏟️ コート</button>
+            <button class="btn bs sm" id="tab-budget-category" data-click-action="switchBudgetTab" data-tab="category" style="font-size:12px">📋 その他</button>
           </div>
 
           <!-- コートタブのコンテンツ -->
@@ -526,8 +526,8 @@
 
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
               <label for="budget-month" style="font-size:12px;color:var(--tx2)">対象月</label>
-              <input type="month" id="budget-month" name="budget-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
-              <button class="btn bs sm" onclick="openBudgetRecordModal()">➕ 予算を追加</button>
+              <input type="month" id="budget-month" name="budget-month" data-change-action="renderBudget" style="font-size:13px;padding:6px 10px" autocomplete="off">
+              <button class="btn bs sm" data-click-action="openBudgetRecordModal">➕ 予算を追加</button>
             </div>
             <div id="budget-court-content"></div>
           </div>
@@ -552,8 +552,8 @@
 
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
               <label for="budget-category-month" style="font-size:12px;color:var(--tx2)">対象月</label>
-              <input type="month" id="budget-category-month" name="budget-category-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
-              <button class="btn bs sm" onclick="openBudgetCategoryRecordModal()">➕ 追加</button>
+              <input type="month" id="budget-category-month" name="budget-category-month" data-change-action="renderBudget" style="font-size:13px;padding:6px 10px" autocomplete="off">
+              <button class="btn bs sm" data-click-action="openBudgetCategoryRecordModal">➕ 追加</button>
             </div>
             <div id="budget-category-content"></div>
           </div>
@@ -576,7 +576,7 @@
           下のボタンから再度ログインしてください（画面がリロードされます。保存済みのデータは失われませんが、入力中の内容は失われる場合があります）。
         </p>
         <div class="mact">
-          <button class="btn bp" style="width:100%" onclick="requestTokenViaRedirect()">再ログイン</button>
+          <button class="btn bp" style="width:100%" data-click-action="requestTokenViaRedirect">再ログイン</button>
         </div>
       </div>
     </div>
@@ -592,22 +592,22 @@
           <fieldset class="fieldset-reset mb-12">
             <legend class="mb-6" style="font-size:0.9em">種別</legend>
             <div class="tog2 mb-12">
-              <button class="tbtn income" id="etx-t-income"  aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">収入</button>
-              <button class="tbtn expense" id="etx-t-expense" aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">支出</button>
+              <button class="tbtn income" id="etx-t-income"  aria-pressed="false" data-click-action="toggleGroup">収入</button>
+              <button class="tbtn expense" id="etx-t-expense" aria-pressed="false" data-click-action="toggleGroup">支出</button>
             </div>
           </fieldset>
           <fieldset class="fieldset-reset mb-12">
             <legend class="mb-6" style="font-size:0.9em">口座</legend>
             <div class="tog2 mb-12">
-              <button class="tbtn cash" id="etx-a-cash" aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">現金</button>
-              <button class="tbtn bank" id="etx-a-bank" aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">銀行預金</button>
+              <button class="tbtn cash" id="etx-a-cash" aria-pressed="false" data-click-action="toggleGroup">現金</button>
+              <button class="tbtn bank" id="etx-a-bank" aria-pressed="false" data-click-action="toggleGroup">銀行預金</button>
             </div>
           </fieldset>
           <div class="fg">
             <div class="fi"><label for="etx-date">日付</label><input type="date" id="etx-date" name="edit-transaction-date" autocomplete="off"></div>
             <div class="fi full">
               <label for="etx-cls">科目分類</label>
-              <select id="etx-cls" name="edit-transaction-class" onchange="updateEditCategories()" autocomplete="off"></select>
+              <select id="etx-cls" name="edit-transaction-class" data-change-action="updateEditCategories" autocomplete="off"></select>
             </div>
             <div class="fi full">
               <label for="etx-cat">科目</label>
@@ -622,7 +622,7 @@
         <!-- 振替フィールド -->
         <div id="etx-transfer" style="display:none">
           <div class="fg">
-            <div class="fi"><label for="etx-date-tr">日付</label><input type="date" id="etx-date-tr" name="edit-transfer-date" autocomplete="off" oninput="document.getElementById('etx-date').value=this.value"></div>
+            <div class="fi"><label for="etx-date-tr">日付</label><input type="date" id="etx-date-tr" name="edit-transfer-date" autocomplete="off" data-input-action="mirrorInput" data-mirror-target="etx-date"></div>
             <div class="fi">
               <label for="etx-tr-from">移動元</label>
               <select id="etx-tr-from" name="edit-transfer-from" autocomplete="off"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
@@ -632,14 +632,14 @@
               <select id="etx-tr-to" name="edit-transfer-to" autocomplete="off"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
             </div>
             <div class="fi full"><label for="etx-tr-desc">摘要</label><input type="text" id="etx-tr-desc" name="edit-transfer-description" autocomplete="off"></div>
-            <div class="fi"><label for="etx-amt-tr">金額（円）</label><input type="number" id="etx-amt-tr" name="edit-transfer-amount" min="0" inputmode="numeric" autocomplete="off" oninput="document.getElementById('etx-amt').value=this.value"></div>
+            <div class="fi"><label for="etx-amt-tr">金額（円）</label><input type="number" id="etx-amt-tr" name="edit-transfer-amount" min="0" inputmode="numeric" autocomplete="off" data-input-action="mirrorInput" data-mirror-target="etx-amt"></div>
           </div>
         </div>
 
         <div class="mact">
-          <button class="btn bd sm" onclick="delTx(parseInt(document.getElementById('etx-id').value));closeM('m-edit-tx')" style="margin-right:auto">削除</button>
-          <button class="btn bs" onclick="closeM('m-edit-tx')">キャンセル</button>
-          <button class="btn bp" onclick="saveEditTx()">保存</button>
+          <button class="btn bd sm" data-click-action="deleteEditedTx" style="margin-right:auto">削除</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-edit-tx">キャンセル</button>
+          <button class="btn bp" data-click-action="saveEditTx">保存</button>
         </div>
       </div>
     </div>
@@ -670,8 +670,8 @@
           </div>
         </div>
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-add')">キャンセル</button>
-          <button class="btn bp" onclick="addMember()">追加</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-add">キャンセル</button>
+          <button class="btn bp" data-click-action="addMember">追加</button>
         </div>
       </div>
     </div>
@@ -683,8 +683,8 @@
 
         <!-- タブ -->
         <div style="display:flex;gap:8px;border-bottom:1px solid var(--bdr);margin-bottom:16px;padding-bottom:8px">
-          <button class="btn bp sm active" id="tab-basic" onclick="switchEditTab('basic')" style="font-size:12px">基本情報</button>
-          <button class="btn bs sm" id="tab-periods" onclick="switchEditTab('periods')" style="font-size:12px">期間別属性</button>
+          <button class="btn bp sm active" id="tab-basic" data-click-action="switchEditTab" data-tab="basic" style="font-size:12px">基本情報</button>
+          <button class="btn bs sm" id="tab-periods" data-click-action="switchEditTab" data-tab="periods" style="font-size:12px">期間別属性</button>
         </div>
 
         <!-- 基本情報タブ -->
@@ -727,16 +727,16 @@
               </div>
             </div>
             <div style="display:flex;gap:8px">
-              <button class="btn bp sm" style="flex:1" id="new-period-btn" onclick="addMemberPeriod()">期間を追加</button>
-              <button class="btn bs sm" id="cancel-edit-btn" style="display:none;flex:1" onclick="cancelEditPeriod()">キャンセル</button>
+              <button class="btn bp sm" style="flex:1" id="new-period-btn" data-click-action="addMemberPeriod">期間を追加</button>
+              <button class="btn bs sm" id="cancel-edit-btn" style="display:none;flex:1" data-click-action="cancelEditPeriod">キャンセル</button>
             </div>
           </div>
         </div>
 
         <div class="mact" style="margin-top:16px">
-          <button class="btn bd sm" onclick="deleteMember()" style="margin-right:auto">退部にする</button>
-          <button class="btn bs" onclick="closeM('m-edit')">キャンセル</button>
-          <button class="btn bp" onclick="saveMember()">保存</button>
+          <button class="btn bd sm" data-click-action="deleteMember" style="margin-right:auto">退部にする</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-edit">キャンセル</button>
+          <button class="btn bp" data-click-action="saveMember">保存</button>
         </div>
       </div>
     </div>
@@ -748,10 +748,10 @@
 
         <!-- CSVファイルアップロード -->
         <div style="margin-bottom:16px;padding:12px;background:var(--sur2);border:2px dashed var(--bdr);border-radius:8px;text-align:center" id="csv-drop-area" ondragover="event.preventDefault();this.style.borderColor='var(--grn)'" ondragleave="this.style.borderColor='var(--bdr)'" ondrop="event.preventDefault();this.style.borderColor='var(--bdr)';handleBulkAddFile({dataTransfer:event.dataTransfer})">
-          <input type="file" id="bulk-members-file" accept=".csv" onchange="handleBulkAddFile(event)" style="display:none">
+          <input type="file" id="bulk-members-file" accept=".csv" data-change-action="handleBulkAddFile" style="display:none">
           <div style="font-size:13px;margin-bottom:6px">📁 CSVファイルをここにドラッグ&ドロップ</div>
           <div style="font-size:11px;color:var(--tx2);margin-bottom:8px">または</div>
-          <button class="btn bp sm" onclick="document.getElementById('bulk-members-file').click()" style="font-size:12px">ファイルを選択</button>
+          <button class="btn bp sm" data-click-action="triggerFileInput" data-target="bulk-members-file" style="font-size:12px">ファイルを選択</button>
         </div>
 
         <div style="margin-bottom:12px;font-size:12px;color:var(--tx2)">
@@ -767,8 +767,8 @@
           <textarea id="bulk-members-text" style="width:100%;height:200px;padding:12px;border:1px solid var(--bdr);border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;resize:none" placeholder="例:&#10;山田,太郎,26,男プレ&#10;花子,花子,25,女プレ"></textarea>
         </div>
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-bulk-add')">キャンセル</button>
-          <button class="btn bp" onclick="bulkAddMembers()">登録</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-bulk-add">キャンセル</button>
+          <button class="btn bp" data-click-action="bulkAddMembers">登録</button>
         </div>
       </div>
     </div>
@@ -794,8 +794,8 @@
           <div id="bulk-change-preview">選択中の部員: なし</div>
         </div>
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-bulk-change-attr')">キャンセル</button>
-          <button class="btn bp" onclick="confirmBulkChangeAttr()">追加</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-bulk-change-attr">キャンセル</button>
+          <button class="btn bp" data-click-action="confirmBulkChangeAttr">追加</button>
         </div>
       </div>
     </div>
@@ -827,12 +827,12 @@
             <div class="fi"><label for="adj-from">開始月</label><input type="month" id="adj-from" name="adjustment-from" autocomplete="off"></div>
             <div class="fi"><label for="adj-to">終了月</label><input type="month" id="adj-to" name="adjustment-to" autocomplete="off"></div>
           </div>
-          <button class="btn bs sm" onclick="addAdj()" style="height:44px">追加</button>
+          <button class="btn bs sm" data-click-action="addAdj" style="height:44px">追加</button>
           </div>
         </div>
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-fee')">キャンセル</button>
-          <button class="btn bp" onclick="saveFee()">保存</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-fee">キャンセル</button>
+          <button class="btn bp" data-click-action="saveFee">保存</button>
         </div>
       </div>
     </div>
@@ -844,8 +844,8 @@
         <div class="mb-16">
           <div class="font-semibold" style="display:block;margin-bottom:8px">種別</div>
           <div class="tog2">
-            <button class="tbtn income on" id="cat-type-income" aria-pressed="true"  onclick="switchCatType('income',this)">収入</button>
-            <button class="tbtn expense" id="cat-type-expense" aria-pressed="false" onclick="switchCatType('expense',this)">支出</button>
+            <button class="tbtn income on" id="cat-type-income" aria-pressed="true"  data-click-action="switchCatType" data-type="income">収入</button>
+            <button class="tbtn expense" id="cat-type-expense" aria-pressed="false" data-click-action="switchCatType" data-type="expense">支出</button>
           </div>
         </div>
 
@@ -861,7 +861,7 @@
               <input type="text" id="cat-name-input" placeholder="例：給与入金" style="font-size:14px;padding:10px 12px">
             </div>
           </div>
-          <button class="btn bp sm" style="width:100%" onclick="addCategory()">追加</button>
+          <button class="btn bp sm" style="width:100%" data-click-action="addCategory">追加</button>
         </div>
 
         <div class="mb-16" id="cat-list-section">
@@ -870,8 +870,8 @@
         </div>
 
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-categories')">閉じる</button>
-          <button class="btn bp" onclick="saveCategories()">保存</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-categories">閉じる</button>
+          <button class="btn bp" data-click-action="saveCategories">保存</button>
         </div>
       </div>
     </div>
@@ -900,7 +900,7 @@
               <input type="text" id="budget-court-remarks" placeholder="任意" style="font-size:14px;padding:10px 12px">
             </div>
           </div>
-          <button class="btn bp sm" style="width:100%" onclick="addBudgetSetting()">追加</button>
+          <button class="btn bp sm" style="width:100%" data-click-action="addBudgetSetting">追加</button>
         </div>
 
         <div class="mb-16">
@@ -909,8 +909,8 @@
         </div>
 
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-budget-settings')">閉じる</button>
-          <button class="btn bp" onclick="saveBudgetSettings()">保存</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-budget-settings">閉じる</button>
+          <button class="btn bp" data-click-action="saveBudgetSettings">保存</button>
         </div>
       </div>
     </div>
@@ -926,7 +926,7 @@
           </div>
           <div class="fi">
             <label for="budget-record-court">コート設定</label>
-            <select id="budget-record-court" name="budget-record-court" onchange="updateBudgetCourtInfo()" autocomplete="off"></select>
+            <select id="budget-record-court" name="budget-record-court" data-change-action="updateBudgetCourtInfo" autocomplete="off"></select>
           </div>
           <div class="fi">
             <label for="budget-record-hours">使用時間（時間）</label>
@@ -942,8 +942,8 @@
           </div>
         </div>
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-budget-record')">キャンセル</button>
-          <button class="btn bp" id="budget-record-submit-btn" onclick="addBudgetRecord()">追加する</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-budget-record">キャンセル</button>
+          <button class="btn bp" id="budget-record-submit-btn" data-click-action="addBudgetRecord">追加する</button>
         </div>
       </div>
     </div>
@@ -957,8 +957,8 @@
         <fieldset class="fieldset-reset mb-12">
           <legend class="mb-6" style="font-size:0.9em">タイプ</legend>
           <div class="tog2 mb-12">
-            <button class="tbtn income on" id="budget-cat-t-income" aria-pressed="true"  onclick="switchBudgetCategoryType('income')">収入</button>
-            <button class="tbtn expense" id="budget-cat-t-expense" aria-pressed="false" onclick="switchBudgetCategoryType('expense')">支出</button>
+            <button class="tbtn income on" id="budget-cat-t-income" aria-pressed="true"  data-click-action="switchBudgetCategoryType" data-type="income">収入</button>
+            <button class="tbtn expense" id="budget-cat-t-expense" aria-pressed="false" data-click-action="switchBudgetCategoryType" data-type="expense">支出</button>
           </div>
         </fieldset>
 
@@ -969,7 +969,7 @@
           </div>
           <div class="fi full">
             <label for="budget-cat-classification">分類</label>
-            <select id="budget-cat-classification" name="budget-cat-classification" onchange="updateBudgetCategoryList()" autocomplete="off"></select>
+            <select id="budget-cat-classification" name="budget-cat-classification" data-change-action="updateBudgetCategoryList" autocomplete="off"></select>
           </div>
           <div class="fi full">
             <label for="budget-cat-category">科目</label>
@@ -985,8 +985,8 @@
           </div>
         </div>
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-budget-category-record')">キャンセル</button>
-          <button class="btn bp" id="budget-cat-submit-btn" onclick="addBudgetCategoryRecord()">追加</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-budget-category-record">キャンセル</button>
+          <button class="btn bp" id="budget-cat-submit-btn" data-click-action="addBudgetCategoryRecord">追加</button>
         </div>
       </div>
     </div>
@@ -998,7 +998,7 @@
         <div class="fg">
           <div class="fi full">
             <label for="co-fiscal-year">対象年度</label>
-            <select id="co-fiscal-year" name="carryover-fiscal-year" autocomplete="off" onchange="onCarryoverYearChange()"></select>
+            <select id="co-fiscal-year" name="carryover-fiscal-year" autocomplete="off" data-change-action="onCarryoverYearChange"></select>
           </div>
           <div class="fi">
             <label for="co-cash">現金繰越額（円）</label>
@@ -1019,8 +1019,8 @@
         </div>
         <p id="co-suggest-note" style="font-size:12px;color:var(--tx2);line-height:1.5"></p>
         <div class="mact">
-          <button class="btn bs" onclick="closeM('m-carryover')">キャンセル</button>
-          <button class="btn bp" onclick="saveCarryover()">保存</button>
+          <button class="btn bs" data-click-action="closeM" data-modal="m-carryover">キャンセル</button>
+          <button class="btn bp" data-click-action="saveCarryover">保存</button>
         </div>
       </div>
     </div>

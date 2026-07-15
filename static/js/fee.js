@@ -100,7 +100,7 @@ function renderFee() {
       ? `<input type="number" name="practice-count" class="practice-input" data-member-id="${m.id}" data-month="${ym}" min="0" max="31" value="${pc[m.id]||0}"
            style="width:40px;padding:8px;border:1px solid var(--bdr);border-radius:6px;font-size:16px;text-align:center"
            autocomplete="off"
-           onchange="setPrac(${m.id},'${ym}',this.value)">`
+           data-change-action="setPrac" data-id="${m.id}" data-ym="${ym}">`
       : `<span class="text-tertiary text-sm text-center">—</span>`;
     return `<tr>
       <td class="text-tertiary">${m.grade}<br><span class="text-amount">${escapeHtml(m.name)}</span></td>
@@ -110,7 +110,7 @@ function renderFee() {
       <td class="text-center">
         <button class="btn sm ${getPaidStatusClasses(isPaid)} btn-min-width"
           aria-label="${escapeHtml(m.name)}さんの部費（現在${isPaid?'納入済み':'未納'}、クリックで切り替え）"
-          onclick="toggleFee(${m.id},'${ym}')">${isPaid?'✓ 済み':'✕ 未納'}</button>
+          data-click-action="toggleFee" data-id="${m.id}" data-ym="${ym}">${isPaid?'✓ 済み':'✕ 未納'}</button>
       </td>
     </tr>`;
   }).join('');
@@ -260,7 +260,7 @@ function renderAdjList() {
         <div class="adj-item">
           <span>${attrBadge(a.attr)} <span style="font-family:'DM Mono',monospace;font-size:12px">${fmt(a.amount)}</span></span>
           <span class="text-xs-muted">${escapeHtml(a.from)}〜${escapeHtml(a.to)}</span>
-          <button class="btn bd sm" onclick="delAdj(${a.id})">削除</button>
+          <button class="btn bd sm" data-click-action="delAdj" data-id="${a.id}">削除</button>
         </div>`).join('');
 }
 
@@ -287,3 +287,10 @@ async function delAdj(id) {
   renderAdjList(); renderFeeView(); renderFee();
   await saveSheet(() => sheetsDeleteRow(SH.FEE_SET, row));
 }
+
+Object.assign(CLICK_ACTIONS, {
+  toggleFee: (el) => toggleFee(Number(el.dataset.id), el.dataset.ym),
+  delAdj: (el) => delAdj(Number(el.dataset.id)),
+});
+
+CHANGE_ACTIONS.setPrac = (el) => setPrac(Number(el.dataset.id), el.dataset.ym, el.value);

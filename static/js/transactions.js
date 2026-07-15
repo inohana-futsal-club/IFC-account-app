@@ -34,8 +34,8 @@ function txRow(t) {
     <div class="txr-row2">
       <span class="txdesc">${escapeHtml(t.desc)}</span>
       <span class="txamt ${amtCls}">${amtStr}</span>
-      <button class="btn bs sm btn-sm-custom flex-shrink" onclick="openEditTx(${t.id})">編集</button>
-      <button class="btn bd sm btn-sm-custom flex-shrink" onclick="delTx(${t.id})">削除</button>
+      <button class="btn bs sm btn-sm-custom flex-shrink" data-click-action="openEditTx" data-id="${t.id}">編集</button>
+      <button class="btn bd sm btn-sm-custom flex-shrink" data-click-action="delTx" data-id="${t.id}">削除</button>
     </div>
   </div>`;
 }
@@ -318,8 +318,8 @@ function renderCashLedger(acct, title) {
       <td class="num text-income">${inAmt?fmtN(inAmt):''}</td>
       <td class="num text-expense">${outAmt?fmtN(outAmt):''}</td>
       <td class="num ${bal>=0?'bal-pos':'bal-neg'}">${fmtN(bal)}</td>
-      <td class="text-center"><button class="btn bs sm" onclick="openEditTx(${t.id})">編集</button></td>
-      <td class="text-center"><button class="btn bd sm" onclick="if(confirm('削除しますか？'))delTx(${t.id})">削除</button></td>
+      <td class="text-center"><button class="btn bs sm" data-click-action="openEditTx" data-id="${t.id}">編集</button></td>
+      <td class="text-center"><button class="btn bd sm" data-click-action="delTx" data-id="${t.id}" data-confirm="削除しますか？">削除</button></td>
     </tr>`;
   }).join('');
   return `<div class="card card-no-pad overflow-hidden">
@@ -502,6 +502,24 @@ function renderTx() {
   if (pcList) pcList.innerHTML = html;
   if (spList) spList.innerHTML = html;
 }
+
+Object.assign(CLICK_ACTIONS, {
+  setType: (el) => setType(el.dataset.type),
+  setAcct: (el) => setAcct(el.dataset.acct),
+  setBsType: (el) => setBsType(el.dataset.type, el),
+  setBsAcct: (el) => setBsAcct(el.dataset.acct, el),
+  showLedger: (el) => showLedger(el.dataset.ledger),
+  openEditTx: (el) => openEditTx(Number(el.dataset.id)),
+  delTx: (el) => delTx(Number(el.dataset.id)),
+  deleteEditedTx: () => {
+    delTx(parseInt(document.getElementById('etx-id').value));
+    closeM('m-edit-tx');
+  },
+});
+
+INPUT_ACTIONS.mirrorInput = (el) => {
+  document.getElementById(el.dataset.mirrorTarget).value = el.value;
+};
 
 /* スワイプで閉じる（任意） */
 (function initSwipeClose() {

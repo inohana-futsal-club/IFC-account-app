@@ -8,14 +8,6 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => _ESCAPE_HTML_MAP[c]);
 }
 
-// onclick="...('${escHtml(x)}')" のようにHTML属性内のJS文字列リテラルへ埋め込むためのエスケープ。
-// JS文字列としてのクォート/バックスラッシュを先にエスケープしてから、属性値としてHTMLエスケープする
-// （ブラウザが属性値をHTMLデコードしてからJSとして評価するため、この順序でないと "/'`" によるインジェクションを防げない）
-function escHtml(str) {
-  const jsEscaped = String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  return escapeHtml(jsEscaped);
-}
-
 /* ================================================================
    UTILITY FUNCTIONS - CSS Helper Functions
 ================================================================ */
@@ -155,6 +147,11 @@ function closeM(id) {
   if (modalTriggerEl && document.body.contains(modalTriggerEl)) modalTriggerEl.focus();
   modalTriggerEl = null;
 }
+
+Object.assign(CLICK_ACTIONS, {
+  openM: (el) => openM(el.dataset.modal),
+  closeM: (el) => closeM(el.dataset.modal),
+});
 
 // 学年セレクトの選択肢を動的に生成する（毎年コードを書き換えなくて済むように）
 function populateGradeSelects() {

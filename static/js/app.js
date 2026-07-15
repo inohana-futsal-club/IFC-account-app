@@ -244,6 +244,8 @@ function showPage(n) {
   if (n === 'categories') renderCategoriesPage();
 }
 
+CLICK_ACTIONS.showPage = (el) => showPage(el.dataset.page);
+
 /* ================================================================
    CALC
 ================================================================ */
@@ -330,11 +332,58 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (e) => {
     const menu = document.getElementById('user-menu');
     if (!menu) return;
-    const btn = e.target.closest('button[onclick="toggleUserMenu()"]');
+    const btn = e.target.closest('[data-click-action="toggleUserMenu"]');
     if (!btn && !menu.contains(e.target)) {
       menu.style.display = 'none';
     }
   });
+});
+
+/* ================================================================
+   DATA-ACTION DISPATCHER
+   onclick/onchange/oninput属性への文字列埋め込みを避けるため、HTML側は
+   data-click-action="関数名" data-xxx="値" のような素のデータ属性のみを持ち、
+   実際の関数呼び出しはここでイベント委譲して行う。
+   引数を伴わない呼び出しはCLICK_ACTIONS/CHANGE_ACTIONS/INPUT_ACTIONSへの
+   登録を省略でき、その場合data-*-action属性の値をそのままグローバル関数名として呼ぶ。
+   click/change/inputで別々の属性名（data-click-action等）を使うのは、
+   チェックボックスやファイル選択のようにclickとchangeの両方が同じ要素で
+   発火する場合に、片方専用のハンドラをもう片方の委譲が誤って引数なしで
+   呼んでしまう事故を防ぐため（実際にこれで一度バグを作った）。
+================================================================ */
+CLICK_ACTIONS.toggleGroup = (el) => {
+  const group = el.closest('.tog2, .tog3, .bs-tog2, .bs-tog3') || el.parentElement;
+  group.querySelectorAll('.tbtn, .bs-tbtn, .bs-abtn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+};
+
+CLICK_ACTIONS.triggerFileInput = (el) => {
+  document.getElementById(el.dataset.target)?.click();
+};
+
+function dispatchAction(registry, action, el, e) {
+  const handler = registry[action];
+  if (handler) { handler(el, e); return; }
+  if (typeof window[action] === 'function') { window[action](); return; }
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-click-action]');
+  if (!el) return;
+  if (el.dataset.confirm && !confirm(el.dataset.confirm)) return;
+  dispatchAction(CLICK_ACTIONS, el.dataset.clickAction, el, e);
+});
+
+document.addEventListener('change', (e) => {
+  const el = e.target.closest('[data-change-action]');
+  if (!el) return;
+  dispatchAction(CHANGE_ACTIONS, el.dataset.changeAction, el, e);
+});
+
+document.addEventListener('input', (e) => {
+  const el = e.target.closest('[data-input-action]');
+  if (!el) return;
+  dispatchAction(INPUT_ACTIONS, el.dataset.inputAction, el, e);
 });
 
 /* ================================================================

@@ -130,7 +130,7 @@ function renderBudgetSettingsList() {
           <div style="font-size:13px;font-family:'DM Mono',monospace;color:var(--red);font-weight:500">¥${fmtN(s.price_per_hour)}/時間</div>
           ${s.remarks ? `<div style="font-size:11px;color:var(--tx3);margin-top:4px">${escapeHtml(s.remarks)}</div>` : ''}
         </div>
-        <button class="btn bd sm" onclick="deleteBudgetSetting(${s.id})" style="margin-left:10px">削除</button>
+        <button class="btn bd sm" data-click-action="deleteBudgetSetting" data-id="${s.id}" style="margin-left:10px">削除</button>
       </div>
     </div>
   `).join('');
@@ -289,7 +289,7 @@ function renderCourtBudget() {
                 <td>${escapeHtml(String(r.hours))}h</td>
                 <td>${fmt(r.price_per_hour)}/h</td>
                 <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
-                <td style="white-space:nowrap"><button class="btn bs sm" onclick="openBudgetRecordModal(${r.id})" style="margin-right:4px">編集</button><button class="btn bd sm" onclick="deleteBudgetRecord(${r.id})">削除</button></td>
+                <td style="white-space:nowrap"><button class="btn bs sm" data-click-action="openBudgetRecordModal" data-id="${r.id}" style="margin-right:4px">編集</button><button class="btn bd sm" data-click-action="deleteBudgetRecord" data-id="${r.id}">削除</button></td>
               </tr>`).join('')}
           </tbody>
         </table></div>
@@ -319,7 +319,7 @@ function renderCategoryBudget() {
                 <td>${escapeHtml(r.classification)}</td>
                 <td>${escapeHtml(r.category)}</td>
                 <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
-                <td style="white-space:nowrap"><button class="btn bs sm" onclick="openBudgetCategoryRecordModal(${r.id})" style="margin-right:4px">編集</button><button class="btn bd sm" onclick="deleteBudgetCategoryRecord(${r.id})">削除</button></td>
+                <td style="white-space:nowrap"><button class="btn bs sm" data-click-action="openBudgetCategoryRecordModal" data-id="${r.id}" style="margin-right:4px">編集</button><button class="btn bd sm" data-click-action="deleteBudgetCategoryRecord" data-id="${r.id}">削除</button></td>
               </tr>`).join('')}
           </tbody>
         </table></div>
@@ -487,3 +487,13 @@ async function deleteBudgetCategoryRecord(id) {
   renderBudget();
   await saveSheet(() => sheetsDeleteRow(SH.BUDGET_CATEGORY_RECORDS, row));
 }
+
+Object.assign(CLICK_ACTIONS, {
+  switchBudgetTab: (el) => switchBudgetTab(el.dataset.tab),
+  switchBudgetCategoryType: (el) => switchBudgetCategoryType(el.dataset.type),
+  deleteBudgetSetting: (el) => deleteBudgetSetting(Number(el.dataset.id)),
+  openBudgetRecordModal: (el) => openBudgetRecordModal(el.dataset.id !== undefined ? Number(el.dataset.id) : undefined),
+  deleteBudgetRecord: (el) => deleteBudgetRecord(Number(el.dataset.id)),
+  openBudgetCategoryRecordModal: (el) => openBudgetCategoryRecordModal(el.dataset.id !== undefined ? Number(el.dataset.id) : undefined),
+  deleteBudgetCategoryRecord: (el) => deleteBudgetCategoryRecord(Number(el.dataset.id)),
+});

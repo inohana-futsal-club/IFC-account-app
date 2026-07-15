@@ -45,8 +45,8 @@ function renderCategoriesList() {
           </div>
         </div>
         <div class="flex flex-gap-6">
-          <button class="btn bs sm flex-1" onclick="cancelEditCategory()">キャンセル</button>
-          <button class="btn bp sm flex-1" onclick="saveEditCategory(${currentCatEditIndex})">保存</button>
+          <button class="btn bs sm flex-1" data-click-action="cancelEditCategory">キャンセル</button>
+          <button class="btn bp sm flex-1" data-click-action="saveEditCategory" data-index="${currentCatEditIndex}">保存</button>
         </div>
       </div>
     `;
@@ -62,8 +62,8 @@ function renderCategoriesList() {
             <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:12px">
               <span>${escapeHtml(cat.category)}</span>
               <div class="flex flex-gap-4">
-                <button class="btn bs sm btn-xs" onclick="editCategory(${categoriesEdited.indexOf(cat)})">編集</button>
-                <button class="btn bd sm btn-xs" onclick="deleteCategoryByRef(${categoriesEdited.indexOf(cat)})">削除</button>
+                <button class="btn bs sm btn-xs" data-click-action="editCategory" data-index="${categoriesEdited.indexOf(cat)}">編集</button>
+                <button class="btn bd sm btn-xs" data-click-action="deleteCategoryByRef" data-index="${categoriesEdited.indexOf(cat)}">削除</button>
               </div>
             </div>
           `).join('')}
@@ -180,9 +180,9 @@ function renderCategoriesPage() {
               <span class="text-base">${escapeHtml(cat.category)}</span>
               <div class="flex flex-gap-5">
                 <button class="btn bs sm btn-xs-custom"
-                  onclick="openCategoryModalWithEdit('${type}','${escHtml(cls)}','${escHtml(cat.category)}')">編集</button>
+                  data-click-action="openCategoryModalWithEdit" data-type="${type}" data-cls="${escapeHtml(cls)}" data-category="${escapeHtml(cat.category)}">編集</button>
                 <button class="btn bd sm btn-xs-custom"
-                  onclick="deleteCategoryDirect('${type}','${escHtml(cls)}','${escHtml(cat.category)}')">削除</button>
+                  data-click-action="deleteCategoryDirect" data-type="${type}" data-cls="${escapeHtml(cls)}" data-category="${escapeHtml(cat.category)}">削除</button>
               </div>
             </div>`).join('')}
         </div>
@@ -197,7 +197,7 @@ function renderCategoriesPage() {
             <span style="width:8px;height:8px;border-radius:50%;background:var(--grn);display:inline-block"></span>
             <span class="text-base-bold">収入科目</span>
           </div>
-          <button class="btn bp sm" onclick="openCategoryModalForType('income')">＋ 追加</button>
+          <button class="btn bp sm" data-click-action="openCategoryModalForType" data-type="income">＋ 追加</button>
         </div>
         ${groupHtml(incCats, 'income')}
       </div>
@@ -207,7 +207,7 @@ function renderCategoriesPage() {
             <span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>
             <span class="text-base-bold">支出科目</span>
           </div>
-          <button class="btn bp sm" onclick="openCategoryModalForType('expense')">＋ 追加</button>
+          <button class="btn bp sm" data-click-action="openCategoryModalForType" data-type="expense">＋ 追加</button>
         </div>
         ${groupHtml(expCats, 'expense')}
       </div>
@@ -260,3 +260,13 @@ function openCategoryModalWithEdit(type, cls, catName) {
     }, 50);
   }, 50);
 }
+
+Object.assign(CLICK_ACTIONS, {
+  switchCatType: (el) => switchCatType(el.dataset.type, el),
+  saveEditCategory: (el) => saveEditCategory(Number(el.dataset.index)),
+  editCategory: (el) => editCategory(Number(el.dataset.index)),
+  deleteCategoryByRef: (el) => deleteCategoryByRef(Number(el.dataset.index)),
+  openCategoryModalWithEdit: (el) => openCategoryModalWithEdit(el.dataset.type, el.dataset.cls, el.dataset.category),
+  deleteCategoryDirect: (el) => deleteCategoryDirect(el.dataset.type, el.dataset.cls, el.dataset.category),
+  openCategoryModalForType: (el) => openCategoryModalForType(el.dataset.type),
+});
