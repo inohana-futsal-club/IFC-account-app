@@ -130,9 +130,6 @@ function showSessionExpiredModal() {
   openM('m-session-expired');
 }
 
-/* ================================================================
-   GLOBAL FISCAL YEAR MANAGEMENT
-================================================================ */
 function toggleUserMenu() {
   const menu = document.getElementById('user-menu');
   if (menu) {

@@ -337,6 +337,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+/* ================================================================
+   GLOBAL FISCAL YEAR MANAGEMENT
+================================================================ */
 function switchGlobalFiscalYear() {
   const select = document.getElementById('global-fiscal-year');
   if (!select) return;
