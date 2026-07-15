@@ -462,7 +462,7 @@
         <div class="page" id="page-categories">
           <div class="sh">
             <div class="st">科目管理</div>
-            <button class="btn bp sm" onclick="openCategoryModal()">⚙ 科目を編集</button>
+            <button class="btn bs sm" onclick="showPage('ledger')">← 帳簿に戻る</button>
           </div>
           <div id="categories-page-content"></div>
         </div>
@@ -849,7 +849,7 @@
           </div>
         </div>
 
-        <div class="mb-16" style="padding:12px;background:var(--sur2);border-radius:8px">
+        <div class="mb-16" id="cat-add-card" style="padding:12px;background:var(--sur2);border-radius:8px">
           <div class="font-semibold mb-12">新規追加</div>
           <div class="fg mb-12">
             <div class="fi">
@@ -864,7 +864,7 @@
           <button class="btn bp sm" style="width:100%" onclick="addCategory()">追加</button>
         </div>
 
-        <div class="mb-16">
+        <div class="mb-16" id="cat-list-section">
           <div class="font-semibold mb-8">科目一覧</div>
           <div id="categories-list"></div>
         </div>

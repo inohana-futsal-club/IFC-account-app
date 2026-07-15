@@ -2135,12 +2135,15 @@ let currentCatType = 'income';
 let categoriesEdited = {};
 let currentCatEditIndex = -1;
 
-function openCategoryModal() {
+// mode: 'full'（全体編集、既定）/ 'add'（新規追加のみ）/ 'edit'（個別編集のみ）
+function openCategoryModal(mode = 'full') {
   currentCatType = 'income';
   currentCatEditIndex = -1;
   categoriesEdited = JSON.parse(JSON.stringify(S.categories));
   document.getElementById('cat-type-income').classList.add('on');
   document.getElementById('cat-type-expense').classList.remove('on');
+  document.getElementById('cat-add-card').style.display = mode === 'edit' ? 'none' : '';
+  document.getElementById('cat-list-section').style.display = mode === 'add' ? 'none' : '';
   renderCategoriesList();
   openM('m-categories');
 }
@@ -2772,9 +2775,9 @@ async function deleteCategoryDirect(type, cls, catName) {
   }
 }
 
-// 種別を指定してモーダルを開く
+// 種別を指定してモーダルを開く（新規追加のみ表示）
 function openCategoryModalForType(type) {
-  openCategoryModal();
+  openCategoryModal('add');
   setTimeout(() => {
     if (type === 'expense') {
       const btn = document.getElementById('cat-type-expense');
@@ -2783,9 +2786,9 @@ function openCategoryModalForType(type) {
   }, 50);
 }
 
-// 編集状態でモーダルを開く
+// 編集状態でモーダルを開く（新規追加カードは非表示）
 function openCategoryModalWithEdit(type, cls, catName) {
-  openCategoryModal();
+  openCategoryModal('edit');
   setTimeout(() => {
     if (type === 'expense') {
       const btn = document.getElementById('cat-type-expense');
