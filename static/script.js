@@ -26,7 +26,7 @@ const SH = {
 ================================================================ */
 const ATTR_L     = { male:'男プレ', female:'女プレ', manager:'マネージャー', exec:'幹部上' };
 const ATTR_ORDER = { male:0, female:1, manager:2, exec:3 };
-const GRADE_ORDER= { 26:0,25:1,24:2,23:3,22:4,21:5 };
+const GRADE_ORDER = Object.fromEntries(getGradeOptions().map((g, i) => [parseInt(g), i]));
 
 /* ================================================================
    UTILITY FUNCTIONS - HTML Escaping
@@ -77,6 +77,13 @@ function getFiscalYearRange(fiscalYear) {
 
 function getFiscalYearLabel(fiscalYear) {
   return `${fiscalYear}年度`;
+}
+
+// 学年（入学年度の下2桁）は現在の会計年度から動的に生成する。
+// 新入生の入学年度（会計年度+1）を先頭に、そこから5年分（計6学年）を並べる
+function getGradeOptions() {
+  const enteringYear = (getFiscalYear(new Date()) + 1) % 100;
+  return Array.from({ length: 6 }, (_, i) => String(enteringYear - i).padStart(2, '0'));
 }
 
 function getAvailableFiscalYears() {
@@ -1701,7 +1708,7 @@ async function bulkAddMembers() {
       toast(`形式が違う行があります: ${line}`);
       return;
     }
-    if (!['26','25','24','23','22','21'].includes(grade)) {
+    if (!getGradeOptions().includes(grade)) {
       toast(`学年が不正です: ${grade}`);
       return;
     }
@@ -2406,6 +2413,19 @@ async function backupSpreadsheet() {
 function openM(id)  { document.getElementById(id).classList.add('open'); }
 function closeM(id) { document.getElementById(id).classList.remove('open'); }
 
+// 学年セレクトの選択肢を動的に生成する（毎年コードを書き換えなくて済むように）
+function populateGradeSelects() {
+  const optionsHtml = getGradeOptions().map(g => `<option value="${g}">${g}</option>`).join('');
+  ['ma-grade', 'me-grade'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = optionsHtml;
+  });
+  ['f-grade', 'fee-f-grade'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<option value="">すべての学年</option>' + optionsHtml;
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.mbg').forEach(m =>
     m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); }));
@@ -2418,6 +2438,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // グローバル会計年度初期化
   initGlobalFiscalYear();
+
+  // 学年セレクトの選択肢を初期化
+  populateGradeSelects();
 
   // メニュー自動クローズ
   document.addEventListener('click', (e) => {
