@@ -283,6 +283,11 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--grn);
   background: var(--sur);
 }
+/* outline:noneでキーボード操作時のフォーカスが見えなくなるため、:focus-visibleで明確なリングを表示する */
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--grn);
+  outline-offset: 1px;
+}
 textarea { resize: vertical; min-height: 52px; font-size: 16px; }
 
 /* ================================================================
@@ -845,6 +850,10 @@ select.bs-input {
   padding-right: 36px;
 }
 .bs-input:focus { border-color: var(--grn); }
+.bs-input:focus-visible, .bs-amt-input:focus-visible {
+  outline: 2px solid var(--grn);
+  outline-offset: 1px;
+}
 
 .bs-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 

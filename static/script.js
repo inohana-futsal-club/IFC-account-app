@@ -1912,6 +1912,7 @@ function renderFee() {
       <td class="text-right amount-text">${fmt(fee)}</td>
       <td class="text-center">
         <button class="btn sm ${getPaidStatusClasses(isPaid)} btn-min-width"
+          aria-label="${escapeHtml(m.name)}さんの部費（現在${isPaid?'納入済み':'未納'}、クリックで切り替え）"
           onclick="toggleFee(${m.id},'${ym}')">${isPaid?'✓ 済み':'✕ 未納'}</button>
       </td>
     </tr>`;
@@ -2410,8 +2411,35 @@ async function backupSpreadsheet() {
 /* ================================================================
    MODAL / TOAST
 ================================================================ */
-function openM(id)  { document.getElementById(id).classList.add('open'); }
-function closeM(id) { document.getElementById(id).classList.remove('open'); }
+// セッション切れモーダルは「再ログインするまで表示し続ける」仕様のため、
+// Escキー・オーバーレイクリックでは閉じない
+const NON_DISMISSABLE_MODALS = ['m-session-expired'];
+
+let modalTriggerEl = null;
+
+function focusFirstIn(modal) {
+  const candidates = modal.querySelectorAll(
+    'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])'
+  );
+  for (const el of candidates) {
+    if (el.offsetParent !== null) { el.focus(); return; }
+  }
+}
+
+function openM(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modalTriggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  modal.classList.add('open');
+  focusFirstIn(modal);
+}
+
+function closeM(id) {
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.remove('open');
+  if (modalTriggerEl && document.body.contains(modalTriggerEl)) modalTriggerEl.focus();
+  modalTriggerEl = null;
+}
 
 // 学年セレクトの選択肢を動的に生成する（毎年コードを書き換えなくて済むように）
 function populateGradeSelects() {
@@ -2427,8 +2455,27 @@ function populateGradeSelects() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.mbg').forEach(m =>
-    m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); }));
+  document.querySelectorAll('.mbg').forEach(m => {
+    if (NON_DISMISSABLE_MODALS.includes(m.id)) return;
+    m.addEventListener('click', e => { if (e.target===m) closeM(m.id); });
+  });
+
+  // トグルボタン（.tbtn/.bs-tbtn）のaria-pressedを"on"クラスの状態と同期する
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tbtn, .bs-tbtn');
+    if (!btn) return;
+    const group = btn.closest('.tog2, .tog3, .bs-tog2, .bs-tog3') || btn.parentElement;
+    group.querySelectorAll('.tbtn, .bs-tbtn').forEach(b =>
+      b.setAttribute('aria-pressed', b.classList.contains('on') ? 'true' : 'false'));
+  });
+
+  // Escキーで開いているモーダルを閉じる（セッション切れモーダルを除く）
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const openModal = document.querySelector('.mbg.open');
+    if (!openModal || NON_DISMISSABLE_MODALS.includes(openModal.id)) return;
+    closeM(openModal.id);
+  });
 
   // ユーザーメニュー初期化
   const userNameEl = document.getElementById('user-name');

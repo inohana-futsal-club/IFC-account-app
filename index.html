@@ -140,17 +140,17 @@
               <fieldset class="fieldset-reset mb-12">
                 <legend class="mb-4" style="font-size:0.9em">種別</legend>
                 <div class="tog3">
-                  <button class="tbtn income on" id="t-income"   onclick="setType('income')">収入</button>
-                  <button class="tbtn expense"   id="t-expense"  onclick="setType('expense')">支出</button>
-                  <button class="tbtn transfer"  id="t-transfer" onclick="setType('transfer')">口座振替</button>
+                  <button class="tbtn income on" id="t-income"   aria-pressed="true"  onclick="setType('income')">収入</button>
+                  <button class="tbtn expense"   id="t-expense"  aria-pressed="false" onclick="setType('expense')">支出</button>
+                  <button class="tbtn transfer"  id="t-transfer" aria-pressed="false" onclick="setType('transfer')">口座振替</button>
                 </div>
               </fieldset>
               <div id="normal-fields">
                 <fieldset class="fieldset-reset mb-12">
                   <legend class="mb-4" style="font-size:0.9em">口座</legend>
                   <div class="tog2">
-                    <button class="tbtn cash on" id="a-cash" onclick="setAcct('cash')">現金</button>
-                    <button class="tbtn bank"    id="a-bank" onclick="setAcct('bank')">銀行預金</button>
+                    <button class="tbtn cash on" id="a-cash" aria-pressed="true"  onclick="setAcct('cash')">現金</button>
+                    <button class="tbtn bank"    id="a-bank" aria-pressed="false" onclick="setAcct('bank')">銀行預金</button>
                   </div>
                 </fieldset>
                 <div class="fg">
@@ -248,9 +248,9 @@
               <button class="bs-close" onclick="closeBottomSheet()">✕</button>
             </div>
             <div class="bs-tog3">
-              <button class="bs-tbtn income on" onclick="setBsType('income',this)">収入</button>
-              <button class="bs-tbtn expense"   onclick="setBsType('expense',this)">支出</button>
-              <button class="bs-tbtn transfer"  onclick="setBsType('transfer',this)">振替</button>
+              <button class="bs-tbtn income on" aria-pressed="true"  onclick="setBsType('income',this)">収入</button>
+              <button class="bs-tbtn expense"   aria-pressed="false" onclick="setBsType('expense',this)">支出</button>
+              <button class="bs-tbtn transfer"  aria-pressed="false" onclick="setBsType('transfer',this)">振替</button>
             </div>
             <div id="bs-normal">
               <div class="bs-tog2">
@@ -365,7 +365,7 @@
               <thead>
                 <tr>
                   <th style="text-align:center">
-                    <input type="checkbox" id="select-all-members" onchange="toggleSelectAll(this.checked)">
+                    <input type="checkbox" id="select-all-members" aria-label="すべての部員を選択" onchange="toggleSelectAll(this.checked)">
                   </th>
                   <th style="text-align:center">学年</th>
                   <th>氏名</th>
@@ -562,14 +562,14 @@
     </div><!-- /#main-app -->
 
     <!-- Toast -->
-    <div id="toast"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
 
     <!-- ===== MODALS ===== -->
 
     <!-- セッション切れ（閉じるボタンなし。再ログインするまで表示し続ける） -->
-    <div class="mbg" id="m-session-expired">
+    <div class="mbg" id="m-session-expired" role="dialog" aria-modal="true" aria-labelledby="m-session-expired-title">
       <div class="modal">
-        <div class="modal-title">セッションの有効期限が切れました</div>
+        <div class="modal-title" id="m-session-expired-title">セッションの有効期限が切れました</div>
         <p style="font-size:13px;color:var(--tx2);line-height:1.6">
           ログインの有効期限が切れたため、データの読み込み・保存ができません。<br>
           下のボタンから再度ログインしてください（画面がリロードされます。保存済みのデータは失われませんが、入力中の内容は失われる場合があります）。
@@ -581,9 +581,9 @@
     </div>
 
     <!-- 取引編集 -->
-    <div class="mbg" id="m-edit-tx">
+    <div class="mbg" id="m-edit-tx" role="dialog" aria-modal="true" aria-labelledby="m-edit-tx-title">
       <div class="modal">
-        <div class="modal-title">取引を編集</div>
+        <div class="modal-title" id="m-edit-tx-title">取引を編集</div>
         <input type="hidden" id="etx-id">
 
         <!-- 通常取引フィールド -->
@@ -591,15 +591,15 @@
           <fieldset class="fieldset-reset mb-12">
             <legend class="mb-6" style="font-size:0.9em">種別</legend>
             <div class="tog2 mb-12">
-              <button class="tbtn income" id="etx-t-income"  onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">収入</button>
-              <button class="tbtn expense" id="etx-t-expense" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">支出</button>
+              <button class="tbtn income" id="etx-t-income"  aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">収入</button>
+              <button class="tbtn expense" id="etx-t-expense" aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">支出</button>
             </div>
           </fieldset>
           <fieldset class="fieldset-reset mb-12">
             <legend class="mb-6" style="font-size:0.9em">口座</legend>
             <div class="tog2 mb-12">
-              <button class="tbtn cash" id="etx-a-cash" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">現金</button>
-              <button class="tbtn bank" id="etx-a-bank" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">銀行預金</button>
+              <button class="tbtn cash" id="etx-a-cash" aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">現金</button>
+              <button class="tbtn bank" id="etx-a-bank" aria-pressed="false" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">銀行預金</button>
             </div>
           </fieldset>
           <div class="fg">
@@ -644,9 +644,9 @@
     </div>
 
     <!-- 部員追加 -->
-    <div class="mbg" id="m-add">
+    <div class="mbg" id="m-add" role="dialog" aria-modal="true" aria-labelledby="m-add-title">
       <div class="modal">
-        <div class="modal-title">部員を追加</div>
+        <div class="modal-title" id="m-add-title">部員を追加</div>
         <div class="fg">
           <div class="fi"><label for="ma-first-name">姓</label><input type="text" id="ma-first-name" name="member-first-name" placeholder="例：山田" autocomplete="given-name"></div>
           <div class="fi"><label for="ma-last-name">名</label><input type="text" id="ma-last-name" name="member-last-name" placeholder="例：太郎" autocomplete="family-name"></div>
@@ -675,9 +675,9 @@
       </div>
     </div>
 
-    <div class="mbg" id="m-edit">
+    <div class="mbg" id="m-edit" role="dialog" aria-modal="true" aria-labelledby="m-edit-title">
       <div class="modal">
-        <div class="modal-title">部員を編集</div>
+        <div class="modal-title" id="m-edit-title">部員を編集</div>
         <input type="hidden" id="me-id">
 
         <!-- タブ -->
@@ -741,9 +741,9 @@
     </div>
 
     <!-- 一括登録 -->
-    <div class="mbg" id="m-bulk-add">
+    <div class="mbg" id="m-bulk-add" role="dialog" aria-modal="true" aria-labelledby="m-bulk-add-title">
       <div class="modal">
-        <div class="modal-title">部員を一括登録</div>
+        <div class="modal-title" id="m-bulk-add-title">部員を一括登録</div>
 
         <!-- CSVファイルアップロード -->
         <div style="margin-bottom:16px;padding:12px;background:var(--sur2);border:2px dashed var(--bdr);border-radius:8px;text-align:center" id="csv-drop-area" ondragover="event.preventDefault();this.style.borderColor='var(--grn)'" ondragleave="this.style.borderColor='var(--bdr)'" ondrop="event.preventDefault();this.style.borderColor='var(--bdr)';handleBulkAddFile({dataTransfer:event.dataTransfer})">
@@ -773,9 +773,9 @@
     </div>
 
     <!-- 属性一括変更 -->
-    <div class="mbg" id="m-bulk-change-attr">
+    <div class="mbg" id="m-bulk-change-attr" role="dialog" aria-modal="true" aria-labelledby="m-bulk-change-attr-title">
       <div class="modal">
-        <div class="modal-title">属性を一括変更</div>
+        <div class="modal-title" id="m-bulk-change-attr-title">属性を一括変更</div>
         <div style="margin-bottom:16px">
           <label for="bulk-change-start-ym" style="font-weight:500;display:block;margin-bottom:6px">開始月</label>
           <input type="month" id="bulk-change-start-ym" style="width:100%;padding:12px;border:1px solid var(--bdr);border-radius:8px;font-size:14px;box-sizing:border-box">
@@ -798,9 +798,9 @@
         </div>
       </div>
     </div>
-    <div class="mbg" id="m-fee">
+    <div class="mbg" id="m-fee" role="dialog" aria-modal="true" aria-labelledby="m-fee-title">
       <div class="modal">
-        <div class="modal-title">部費設定</div>
+        <div class="modal-title" id="m-fee-title">部費設定</div>
         <div class="ctitle mb-8">属性別の基本月額</div>
         <div class="fg mb-16">
           <div class="fi"><label for="fs-male"><span class="bdg male">男プレ</span> 月額</label><input type="number" id="fs-male" name="fee-male" min="0" inputmode="numeric" autocomplete="off"></div>
@@ -837,14 +837,14 @@
     </div>
 
     <!-- 科目管理 -->
-    <div class="mbg" id="m-categories">
+    <div class="mbg" id="m-categories" role="dialog" aria-modal="true" aria-labelledby="m-categories-title">
       <div class="modal" style="max-width:600px">
-        <div class="modal-title">科目設定</div>
+        <div class="modal-title" id="m-categories-title">科目設定</div>
         <div class="mb-16">
           <div class="font-semibold" style="display:block;margin-bottom:8px">種別</div>
           <div class="tog2">
-            <button class="tbtn income on" id="cat-type-income" onclick="switchCatType('income',this)">収入</button>
-            <button class="tbtn expense" id="cat-type-expense" onclick="switchCatType('expense',this)">支出</button>
+            <button class="tbtn income on" id="cat-type-income" aria-pressed="true"  onclick="switchCatType('income',this)">収入</button>
+            <button class="tbtn expense" id="cat-type-expense" aria-pressed="false" onclick="switchCatType('expense',this)">支出</button>
           </div>
         </div>
 
@@ -876,9 +876,9 @@
     </div>
 
     <!-- コート代設定 -->
-    <div class="mbg" id="m-budget-settings">
+    <div class="mbg" id="m-budget-settings" role="dialog" aria-modal="true" aria-labelledby="m-budget-settings-title">
       <div class="modal">
-        <div class="modal-title">コート代設定</div>
+        <div class="modal-title" id="m-budget-settings-title">コート代設定</div>
         <div class="mb-16" style="padding:12px;background:var(--sur2);border-radius:8px">
           <div class="font-semibold mb-12">新規コート設定</div>
           <div class="fg mb-12">
@@ -915,7 +915,7 @@
     </div>
 
     <!-- 予算記録追加 -->
-    <div class="mbg" id="m-budget-record">
+    <div class="mbg" id="m-budget-record" role="dialog" aria-modal="true" aria-labelledby="budget-record-modal-title">
       <div class="modal">
         <div class="modal-title" id="budget-record-modal-title">予算を追加</div>
         <div class="fg">
@@ -948,7 +948,7 @@
     </div>
 
     <!-- その他予算を追加 -->
-    <div class="mbg" id="m-budget-category-record">
+    <div class="mbg" id="m-budget-category-record" role="dialog" aria-modal="true" aria-labelledby="budget-cat-record-modal-title">
       <div class="modal">
         <div class="modal-title" id="budget-cat-record-modal-title">その他を追加</div>
 
@@ -956,8 +956,8 @@
         <fieldset class="fieldset-reset mb-12">
           <legend class="mb-6" style="font-size:0.9em">タイプ</legend>
           <div class="tog2 mb-12">
-            <button class="tbtn income on" id="budget-cat-t-income" onclick="switchBudgetCategoryType('income')">収入</button>
-            <button class="tbtn expense" id="budget-cat-t-expense" onclick="switchBudgetCategoryType('expense')">支出</button>
+            <button class="tbtn income on" id="budget-cat-t-income" aria-pressed="true"  onclick="switchBudgetCategoryType('income')">収入</button>
+            <button class="tbtn expense" id="budget-cat-t-expense" aria-pressed="false" onclick="switchBudgetCategoryType('expense')">支出</button>
           </div>
         </fieldset>
 
