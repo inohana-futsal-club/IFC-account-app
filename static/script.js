@@ -1232,9 +1232,10 @@ function renderCatLedger() {
 }
 
 function renderSummaryStatement() {
+  const range = getFiscalYearRange(currentFiscalYear);
   let incTotal=0, expTotal=0;
   const catInc={}, catExp={};
-  S.txs.filter(t => t.type!=='transfer').forEach(t => {
+  S.txs.filter(t => t.type!=='transfer' && t.date && range.some(m => t.date.startsWith(m))).forEach(t => {
     if (t.type==='income')  { catInc[t.cat]=(catInc[t.cat]||0)+t.amount; incTotal+=t.amount; }
     else                    { catExp[t.cat]=(catExp[t.cat]||0)+t.amount; expTotal+=t.amount; }
   });
@@ -1244,7 +1245,7 @@ function renderSummaryStatement() {
     `<tr><td class="pl-24">${escapeHtml(c)}</td><td class="num text-expense">${fmtN(catExp[c])}</td></tr>`).join('');
   const net = incTotal - expTotal;
   return `<div class="card card-no-pad overflow-hidden">
-    <div class="card-header">収支計算書（全期間）</div>
+    <div class="card-header">収支計算書（${escapeHtml(getFiscalYearLabel(currentFiscalYear))}）</div>
     <div class="overflow-x-auto"><table class="ltbl"><tbody>
       <tr><td class="font-bold bg-income p-8-14">【収入の部】</td><td class="num font-bold bg-income">${fmtN(incTotal)}</td></tr>
       ${incRows}
@@ -2242,9 +2243,10 @@ async function saveCategories() {
    REPORT
 ================================================================ */
 function renderReport() {
+  const range = getFiscalYearRange(currentFiscalYear);
   const monthly = {};
   S.txs.forEach(t => {
-    if (!t.date) return;
+    if (!t.date || !range.some(m => t.date.startsWith(m))) return;
     const ym = t.date.slice(0,7);
     if (!monthly[ym]) monthly[ym] = { inc:0,exp:0,ci:0,co:0,bi:0,bo:0 };
     if (t.type==='income')  { monthly[ym].inc+=t.amount; t.acct==='cash'?monthly[ym].ci+=t.amount:monthly[ym].bi+=t.amount; }
@@ -2268,7 +2270,7 @@ function renderReport() {
       }).join('');
 
   const clss = {};
-  S.txs.filter(t => t.type!=='transfer').forEach(t => {
+  S.txs.filter(t => t.type!=='transfer' && t.date && range.some(m => t.date.startsWith(m))).forEach(t => {
     if (!clss[t.classification]) clss[t.classification] = { inc:0,exp:0 };
     if (t.type==='income') clss[t.classification].inc+=t.amount;
     else clss[t.classification].exp+=t.amount;
@@ -2315,8 +2317,9 @@ function renderTrendTable(monthly) {
 }
 
 function renderChart() {
+  const range = getFiscalYearRange(currentFiscalYear);
   const monthly = {};
-  S.txs.filter(t => t.type!=='transfer').forEach(t => {
+  S.txs.filter(t => t.type!=='transfer' && t.date && range.some(m => t.date.startsWith(m))).forEach(t => {
     const ym = t.date.slice(0,7);
     if (!monthly[ym]) monthly[ym] = { inc:0,exp:0 };
     if (t.type==='income') monthly[ym].inc+=t.amount;
@@ -3045,6 +3048,7 @@ function rerenderCurrentPage() {
   else if (pageId === 'page-ledger') showLedger(currentLedger);
   else if (pageId === 'page-fees') renderFee();
   else if (pageId === 'page-budget') renderBudget();
+  else if (pageId === 'page-report') { renderReport(); renderChart(); }
 }
 
 function initGlobalFiscalYear() {
