@@ -28,6 +28,18 @@ const ATTR_L     = { male:'男プレ', female:'女プレ', manager:'マネージ
 const ATTR_ORDER = { male:0, female:1, manager:2, exec:3 };
 const GRADE_ORDER = Object.fromEntries(getGradeOptions().map((g, i) => [parseInt(g), i]));
 
+// categoriesシートを新規作成した場合の初期科目（空だと科目セレクトが空になりclassificationが保存できないため）
+const DEFAULT_CATEGORIES = [
+  ['income',  '部費',     '部費',       0],
+  ['income',  'その他収入', '繰越金',    0],
+  ['income',  'その他収入', '雑収入',    1],
+  ['expense', '活動費',   'コート代',    0],
+  ['expense', '活動費',   '用具費',     1],
+  ['expense', '活動費',   '大会参加費',  2],
+  ['expense', '運営費',   '交通費',     0],
+  ['expense', '運営費',   '雑費',      1],
+];
+
 /* ================================================================
    UTILITY FUNCTIONS - HTML Escaping
 ================================================================ */
@@ -395,6 +407,11 @@ async function ensureSheets() {
       [SH.CARRYOVER]: [['fiscal_year','date','cash','bank','note']],
     };
     for (const name of toAdd) await sheetsUpdate(`${name}!A1`, headers[name]);
+
+    // 科目シートを新規作成した場合のみ、デフォルト科目を投入する
+    if (toAdd.includes(SH.CATEGORIES)) {
+      await sheetsAppend(SH.CATEGORIES, DEFAULT_CATEGORIES);
+    }
   }
 }
 
