@@ -100,8 +100,8 @@ function renderMembers() {
         }
 
         return `<tr class="member-row" id="member-row-${m.id}">
-          <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" data-change-action="memberCheckboxChange" data-id="${m.id}"></td>
-          <td class="text-center text-secondary-color">${m.grade}</td>
+          <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" aria-label="${escapeHtml(m.name)}を選択" data-change-action="memberCheckboxChange" data-id="${m.id}"></td>
+          <td class="text-center text-secondary-color">${escapeHtml(m.grade)}</td>
           <td class="font-semibold">${escapeHtml(m.name)}</td>
           <td class="text-center">${attrDisplay}</td>
           <td class="text-center"><button class="btn bs sm" data-click-action="openEdit" data-id="${m.id}">編集</button></td>
@@ -456,7 +456,9 @@ function readBulkAddFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const text = e.target.result;
+      // 先頭のBOM（Excel等が付与する不可視のマーカー）を除去しないと、
+      // 1人目の姓の先頭に見えない文字が混入してしまう
+      const text = e.target.result.replace(/^\uFEFF/, '');
       document.getElementById('bulk-members-text').value = text;
       toast('CSVファイルを読み込みました ✓');
     } catch (err) {
@@ -643,3 +645,22 @@ Object.assign(CHANGE_ACTIONS, {
   },
   handleBulkAddFile: (el, e) => handleBulkAddFile(e),
 });
+
+// CSVドロップ領域のドラッグ&ドロップ（onclick等と同様、HTML側にインラインで
+// 埋め込まず、ここでイベント登録する）
+(function initCsvDropArea() {
+  const area = document.getElementById('csv-drop-area');
+  if (!area) return;
+  area.addEventListener('dragover', e => {
+    e.preventDefault();
+    area.style.borderColor = 'var(--grn)';
+  });
+  area.addEventListener('dragleave', () => {
+    area.style.borderColor = 'var(--bdr)';
+  });
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.style.borderColor = 'var(--bdr)';
+    handleBulkAddFile({ dataTransfer: e.dataTransfer });
+  });
+})();

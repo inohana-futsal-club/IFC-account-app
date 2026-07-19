@@ -76,6 +76,10 @@ function renderTrendTable(monthly) {
 }
 
 function renderChart() {
+  // Chart.jsはCDN経由で読み込むため、オフライン等で読み込みに失敗した場合は
+  // グラフ以外の表示（月別集計・収支計算書など）を壊さないよう、ここで諦める
+  if (typeof Chart === 'undefined') return;
+
   const range = getFiscalYearRange(currentFiscalYear);
   const monthly = {};
   S.txs.filter(t => t.type!=='transfer' && t.date && range.some(m => t.date.startsWith(m))).forEach(t => {

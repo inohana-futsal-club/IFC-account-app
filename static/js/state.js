@@ -43,6 +43,10 @@ let failedSaves = [];
 
 let currentCatType = 'income';
 
+// 取引編集モーダル専用の種別（S.typeは追加フォーム/ボトムシートと共有のため、
+// 編集モーダルで使うとそれらの選択状態を上書きしてしまう。分離して事故を防ぐ）
+let editingTxType = 'income';
+
 let categoriesEdited = {};
 
 let currentCatEditIndex = -1;

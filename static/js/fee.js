@@ -103,7 +103,7 @@ function renderFee() {
            data-change-action="setPrac" data-id="${m.id}" data-ym="${ym}">`
       : `<span class="text-tertiary text-sm text-center">—</span>`;
     return `<tr>
-      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${escapeHtml(m.name)}</span></td>
+      <td class="text-tertiary">${escapeHtml(m.grade)}<br><span class="text-amount">${escapeHtml(m.name)}</span></td>
       <td>${attrBadge(attr)}</td>
       <td class="text-center">${pi}</td>
       <td class="text-right amount-text">${fmt(fee)}</td>
@@ -198,7 +198,7 @@ function renderExecUnpaid() {
       return `<td class="text-tertiary">—</td>`;
     }).join('');
     return `<tr>
-      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${escapeHtml(m.name)}</span></td>
+      <td class="text-tertiary">${escapeHtml(m.grade)}<br><span class="text-amount">${escapeHtml(m.name)}</span></td>
       ${cells}
       <td class="total-col">${fmtN(total)}</td>
     </tr>`;

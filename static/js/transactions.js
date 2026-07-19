@@ -115,11 +115,29 @@ function updateBsCategories() {
 
 function updateEditCategories() {
   const cls = document.getElementById('etx-cls')?.value || '';
-  const cats = S.categories.filter(c => c.type === S.type && c.classification === cls).sort((a, b) => a.order - b.order);
+  const cats = S.categories.filter(c => c.type === editingTxType && c.classification === cls).sort((a, b) => a.order - b.order);
   const catSelect = document.getElementById('etx-cat');
   if (catSelect) {
     catSelect.innerHTML = cats.map(c => `<option value="${escapeHtml(c.category)}">${escapeHtml(c.category)}</option>`).join('');
   }
+}
+
+// 編集モーダルで種別（収入/支出）を切り替えた際、科目分類・科目のプルダウンを
+// 新しい種別のものに作り直す（切り替えずに保存すると、支出なのに収入科目が
+// 保存される、といった不整合が起きるため）
+function setEtxType(type, el) {
+  editingTxType = type;
+  el.closest('.tog2').querySelectorAll('.tbtn').forEach(b => {
+    b.classList.remove('on');
+    b.setAttribute('aria-pressed', 'false');
+  });
+  el.classList.add('on');
+  el.setAttribute('aria-pressed', 'true');
+
+  const etxCls = document.getElementById('etx-cls');
+  const classifications = [...new Set(S.categories.filter(c => c.type === type).map(c => c.classification))];
+  etxCls.innerHTML = classifications.map((cls, idx) => `<option value="${escapeHtml(cls)}" ${idx===0 ? 'selected' : ''}>${escapeHtml(cls)}</option>`).join('');
+  updateEditCategories();
 }
 
 /* ================================================================
@@ -181,10 +199,12 @@ function openEditTx(id) {
     document.getElementById('etx-tr-to').value   = t.toAcct;
     document.getElementById('etx-tr-desc').value = t.desc;
   } else {
-    // 種別ボタン & S.type 更新
-    S.type = t.type;
+    // 種別ボタン & 編集モーダル専用の種別を更新（S.typeは追加フォーム用のため触らない）
+    editingTxType = t.type;
     ['income','expense'].forEach(tp => {
-      document.getElementById('etx-t-' + tp).classList.toggle('on', t.type === tp);
+      const btn = document.getElementById('etx-t-' + tp);
+      btn.classList.toggle('on', t.type === tp);
+      btn.setAttribute('aria-pressed', String(t.type === tp));
     });
     // 口座ボタン
     ['cash','bank'].forEach(ac => {
@@ -508,6 +528,7 @@ Object.assign(CLICK_ACTIONS, {
   setAcct: (el) => setAcct(el.dataset.acct),
   setBsType: (el) => setBsType(el.dataset.type, el),
   setBsAcct: (el) => setBsAcct(el.dataset.acct, el),
+  setEtxType: (el) => setEtxType(el.dataset.type, el),
   showLedger: (el) => showLedger(el.dataset.ledger),
   openEditTx: (el) => openEditTx(Number(el.dataset.id)),
   delTx: (el) => delTx(Number(el.dataset.id)),

@@ -129,25 +129,23 @@ function saveEditCategory(index) {
 // 他エンティティのような行単位の追加・更新・削除ではなく、保存時に一括で洗い替える。
 // 編集は「保存」を押すまでcategoriesEditedという作業コピー上で行われるため、
 // 連打や複数タブでの同時編集さえなければ実務上のリスクは小さい。
+// saveSheet()は内部でエラーを捕捉し失敗バナーで通知するため、ここでtry/catchしても
+// 失敗を検知できない（常に成功トーストが出てしまう）。保存失敗の通知は
+// 画面上部の失敗バナー（updateSaveFailBanner）に委ねる。
 async function saveCategories() {
-  try {
-    const rows = categoriesEdited.map(c => [c.type, c.classification, c.category, c.order || 0]);
-    await saveSheet(async () => {
-      await sheetsClear(SH.CATEGORIES);
-      if (rows.length > 0) {
-        await sheetsAppend(SH.CATEGORIES, rows);
-      }
-    });
-    S.categories = categoriesEdited;
-    initializeCategories();
-    render();
-    closeM('m-categories');
-    toast('科目設定を保存しました ✓');
-    renderCategoriesPage();
-  } catch (e) {
-    console.error('科目設定の保存に失敗しました:', e);
-    toast('保存に失敗しました');
-  }
+  const rows = categoriesEdited.map(c => [c.type, c.classification, c.category, c.order || 0]);
+  await saveSheet(async () => {
+    await sheetsClear(SH.CATEGORIES);
+    if (rows.length > 0) {
+      await sheetsAppend(SH.CATEGORIES, rows);
+    }
+  });
+  S.categories = categoriesEdited;
+  initializeCategories();
+  render();
+  closeM('m-categories');
+  toast('科目設定を保存しました ✓');
+  renderCategoriesPage();
 }
 
 /* FAB は常時表示（スクロール制御なし） */
@@ -215,23 +213,20 @@ function renderCategoriesPage() {
 }
 
 // 科目管理ページから直接削除
+// saveSheet()は内部でエラーを捕捉し失敗バナーで通知するため、ここでのtry/catchは
+// 機能しない（saveCategories()と同様）。
 async function deleteCategoryDirect(type, cls, catName) {
   if (!confirm(`「${cls}」の「${catName}」を削除しますか？`)) return;
   S.categories = S.categories.filter(c =>
     !(c.type === type && c.classification === cls && c.category === catName));
   const rows = S.categories.map(c => [c.type, c.classification, c.category, c.order || 0]);
-  try {
-    await saveSheet(async () => {
-      await sheetsClear(SH.CATEGORIES);
-      if (rows.length > 0) await sheetsAppend(SH.CATEGORIES, rows);
-    });
-    initializeCategories();
-    renderCategoriesPage();
-    toast('科目を削除しました');
-  } catch(e) {
-    console.error(e);
-    toast('削除に失敗しました');
-  }
+  await saveSheet(async () => {
+    await sheetsClear(SH.CATEGORIES);
+    if (rows.length > 0) await sheetsAppend(SH.CATEGORIES, rows);
+  });
+  initializeCategories();
+  renderCategoriesPage();
+  toast('科目を削除しました');
 }
 
 // 種別を指定してモーダルを開く（新規追加のみ表示）

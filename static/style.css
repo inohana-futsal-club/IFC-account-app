@@ -1042,16 +1042,10 @@ select.bs-input {
 .p-6-8 { padding: 6px 8px; }
 .pl-24 { padding-left: 24px; }
 .mb-2 { margin-bottom: 2px; }
-.mb-6 { margin-bottom: 6px; }
 .mb-7 { margin-bottom: 7px; }
 .mt-4 { margin-top: 4px; }
 .border-b { border-bottom: 1px solid var(--bdr); }
 .border-t { border-top: 2px solid var(--bdr); }
-
-/* ================================================================
-   UTILITY CLASSES - Gaps
-================================================================ */
-.flex-gap-5 { gap: 5px; }
 
 /* ================================================================
    UTILITY CLASSES - Typography

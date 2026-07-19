@@ -12,7 +12,12 @@ window.addEventListener('load', () => {
 
 function initGIS() {
   // URLハッシュにアクセストークンが含まれているか確認（リダイレクト後）
+  const hadHash = !!location.hash;
   const hashToken = parseTokenFromHash();
+  if (hadHash) {
+    // stateが不正な場合も含め、トークンらしき値をURLバーに残さない
+    history.replaceState(null, '', location.pathname);
+  }
   if (hashToken) {
     accessToken = hashToken.token;
     // リダイレクト前に保存したメールアドレスを復元
@@ -23,8 +28,6 @@ function initGIS() {
       email:  userEmail,
       expiry: Date.now() + (hashToken.expiresIn - 60) * 1000,
     }));
-    // ハッシュをURLから除去（履歴に残さない）
-    history.replaceState(null, '', location.pathname);
     startApp();
     return;
   }
@@ -40,6 +43,16 @@ function parseTokenFromHash() {
   const token  = params.get('access_token');
   const expires = parseInt(params.get('expires_in') || '3600');
   if (!token) return null;
+
+  // CSRF対策：リダイレクト開始時に自分で発行したstateと一致するか確認する
+  // （一致しなければ、自分が開始していないログイン応答とみなし破棄する）
+  const expectedState = sessionStorage.getItem('oauth_state');
+  sessionStorage.removeItem('oauth_state');
+  if (!expectedState || params.get('state') !== expectedState) {
+    console.error('OAuth state不一致のためトークンを破棄しました');
+    return null;
+  }
+
   return { token, expiresIn: expires, email: '' };
 }
 
@@ -103,12 +116,16 @@ function handleOneTap(response) {
 
 function requestTokenViaRedirect() {
   const redirectUri = location.origin + location.pathname;
+  // CSRF対策：ここで発行したstateを、戻ってきた際にparseTokenFromHashで検証する
+  const state = crypto.randomUUID();
+  sessionStorage.setItem('oauth_state', state);
   const params = new URLSearchParams({
     client_id:     CLIENT_ID,
     redirect_uri:  redirectUri,
     response_type: 'token',
     scope:         SCOPES,
     include_granted_scopes: 'true',
+    state,
   });
   location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }

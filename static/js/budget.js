@@ -243,7 +243,11 @@ function renderBudget() {
 }
 
 function renderBudgetSummary() {
-  const ym = document.getElementById('budget-month')?.value || document.getElementById('budget-category-month')?.value;
+  // 表示中のタブに対応する月を使う（コートタブの月を常に優先すると、
+  // 「その他」タブで別月を選んだ時に合計と一覧の対象月がずれるため）
+  const ym = currentBudgetTab === 'court'
+    ? document.getElementById('budget-month')?.value
+    : document.getElementById('budget-category-month')?.value;
   if (!ym) return;
 
   const range = getFiscalYearRange(currentFiscalYear);

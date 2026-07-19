@@ -155,8 +155,8 @@ Object.assign(CLICK_ACTIONS, {
 
 // 学年セレクトの選択肢を動的に生成する（毎年コードを書き換えなくて済むように）
 function populateGradeSelects() {
-  const optionsHtml   = getGradeOptions().map(g => `<option value="${g}">${g}</option>`).join('');
-  const obOptionsHtml = getObGradeOptions().map(g => `<option value="${g}">${g}</option>`).join('');
+  const optionsHtml   = getGradeOptions().map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+  const obOptionsHtml = getObGradeOptions().map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
 
   ['ma-grade', 'me-grade'].forEach(id => {
     const el = document.getElementById(id);
