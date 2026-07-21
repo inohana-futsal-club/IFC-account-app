@@ -547,7 +547,9 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   font-size: 13px;
   transition: opacity .25s, transform .25s cubic-bezier(.34,1.56,.64,1);
   z-index: 999;
-  white-space: nowrap;
+  max-width: min(90vw, 420px);
+  white-space: normal;
+  text-align: center;
   pointer-events: none;
   opacity: 0;
 }
