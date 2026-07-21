@@ -23,7 +23,7 @@ IFCのAPIキーはこのプロキシの中（Script Properties）にのみ保存
    |---|---|
    | `IFC_BASE_URL` | IFCアプリのデプロイ先URL（例: `https://<cloud-run-service>.a.run.app`）。IFCアプリの管理者に確認してください |
    | `IFC_EXTERNAL_API_KEY` | IFCアプリの管理者から共有されるAPIキー |
-   | `PROXY_ACCESS_TOKEN`(任意) | このプロキシ自体への簡易アクセス制限用の合言葉。設定した場合、`static/js/config.js`の`IFC_PROXY_TOKEN`にも同じ値を設定してください。設定しない場合はこのチェックを行いません |
+   | `PROXY_ACCESS_TOKEN`(任意) | このプロキシ自体への簡易アクセス制限用の合言葉。設定した場合、`static/js/config.js`の`IFC_PROXY_TOKEN`にも同じ値を設定してください。設定しない場合はこのチェックを行いません。**注意**: IFC-accountはpublicリポジトリの内容をそのまま本番配信しているため、`static/js/config.js`に書いたこの値は事実上誰でも閲覧できます。IFC本体のAPIキーとは違い真の秘密にはならず、雑なbotによる無差別アクセスを軽く防ぐ程度の効果しかありません |
 
 4. 右上の「デプロイ」→「新しいデプロイ」→種類を選択で「ウェブアプリ」を選ぶ。
    - 「次のユーザーとして実行」: **自分**
