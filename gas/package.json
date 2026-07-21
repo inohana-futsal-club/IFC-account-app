@@ -1,0 +1,12 @@
+{
+  "name": "ifc-account-gas-backend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "IFC参加日数APIを呼び出すGoogle Apps Script Webアプリ（IFC-accountのバックエンド）",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
