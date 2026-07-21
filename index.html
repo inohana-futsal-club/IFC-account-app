@@ -397,6 +397,14 @@
             </div>
           </div>
 
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <select id="ifc-category" name="ifc-category" aria-label="IFCカテゴリ" style="font-size:12px;padding:5px 10px" autocomplete="off">
+              <option value="men">男子</option>
+              <option value="women">女子</option>
+            </select>
+            <button class="btn bs sm" data-click-action="importIfcParticipation" data-confirm="この月の参加回数をIFCの値で上書きします。よろしいですか？">IFCから参加日数を取得</button>
+          </div>
+
           <div class="fsrow">
             <div class="fstat">
               <div class="fn" id="fp-c" style="color:var(--grn)">0</div>
@@ -1035,6 +1043,7 @@
     <script src="static/js/transactions.js"></script>
     <script src="static/js/members.js"></script>
     <script src="static/js/fee.js"></script>
+    <script src="static/js/ifc-participation.js"></script>
     <script src="static/js/categories.js"></script>
     <script src="static/js/budget.js"></script>
     <script src="static/js/report.js"></script>

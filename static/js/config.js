@@ -10,6 +10,16 @@ const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets https://www.goog
 
 const API_BASE  = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
 
+// IFC参加日数APIプロキシ（Google Apps Script Webアプリ）のexec URL。
+// APIキーはこのプロキシの中(Script Properties)にのみ保存され、ブラウザには渡さない。
+// デプロイ手順は gas/README.md を参照。未設定(空文字)の間はIFC連携ボタンは無効。
+const IFC_PROXY_URL = '';
+
+// gas側でPROXY_ACCESS_TOKENを設定した場合のみ、ここに同じ値を設定する（任意）
+const IFC_PROXY_TOKEN = '';
+
+const IFC_PROXY_TIMEOUT_MS = 10000;
+
 const SH = {
   TX:      'transactions',
   MEMBERS: 'members',
