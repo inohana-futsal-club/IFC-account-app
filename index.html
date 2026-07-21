@@ -199,10 +199,10 @@
               <div class="sh">
                 <div class="st">取引一覧</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <select id="f-acct" name="filter-account" data-change-action="renderTx" style="font-size:12px;padding:5px 8px" autocomplete="off">
+                  <select id="f-acct" name="filter-account" aria-label="口座で絞り込み" data-change-action="renderTx" style="font-size:12px;padding:5px 8px" autocomplete="off">
                     <option value="">すべての口座</option><option value="cash">現金</option><option value="bank">銀行</option>
                   </select>
-                  <select id="f-type" name="filter-type" data-change-action="renderTx" style="font-size:12px;padding:5px 8px" autocomplete="off">
+                  <select id="f-type" name="filter-type" aria-label="種別で絞り込み" data-change-action="renderTx" style="font-size:12px;padding:5px 8px" autocomplete="off">
                     <option value="">すべて</option><option value="income">収入</option>
                     <option value="expense">支出</option><option value="transfer">口座振替</option>
                   </select>
@@ -226,10 +226,10 @@
                 <button class="btn bp sm" data-click-action="openBottomSheet">＋ 追加</button>
               </div>
               <div style="display:flex;gap:6px">
-                <select id="f-acct-sp" name="filter-account-sp" data-change-action="renderTx" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
+                <select id="f-acct-sp" name="filter-account-sp" aria-label="口座で絞り込み" data-change-action="renderTx" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
                   <option value="">すべて</option><option value="cash">現金</option><option value="bank">銀行</option>
                 </select>
-                <select id="f-type-sp" name="filter-type-sp" data-change-action="renderTx" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
+                <select id="f-type-sp" name="filter-type-sp" aria-label="種別で絞り込み" data-change-action="renderTx" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
                   <option value="">収支</option><option value="income">収入</option>
                   <option value="expense">支出</option><option value="transfer">振替</option>
                 </select>
@@ -345,12 +345,12 @@
             </div>
           </div>
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-            <select id="f-attr" name="filter-attribute" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="f-attr" name="filter-attribute" aria-label="属性で絞り込み" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての属性</option><option value="male">男プレ</option>
               <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
               <option value="ob">OB/OG</option>
             </select>
-            <select id="f-grade" name="filter-grade" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="f-grade" name="filter-grade" aria-label="学年で絞り込み" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <!-- 選択肢はJSのpopulateGradeSelects()が動的に生成する -->
             </select>
           </div>
@@ -417,14 +417,14 @@
           </div>
 
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-            <select id="fee-f-attr" name="fee-filter-attr" data-change-action="renderFee" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="fee-f-attr" name="fee-filter-attr" aria-label="属性で絞り込み" data-change-action="renderFee" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての属性</option>
               <option value="male">男プレ</option>
               <option value="female">女プレ</option>
               <option value="manager">マネージャー</option>
               <option value="exec">幹部上</option>
             </select>
-            <select id="fee-f-grade" name="fee-filter-grade" data-change-action="renderFee" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+            <select id="fee-f-grade" name="fee-filter-grade" aria-label="学年で絞り込み" data-change-action="renderFee" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <!-- 選択肢はJSのpopulateGradeSelects()が動的に生成する -->
             </select>
           </div>
@@ -592,8 +592,8 @@
           <fieldset class="fieldset-reset mb-12">
             <legend class="mb-6" style="font-size:0.9em">種別</legend>
             <div class="tog2 mb-12">
-              <button class="tbtn income" id="etx-t-income"  aria-pressed="false" data-click-action="toggleGroup">収入</button>
-              <button class="tbtn expense" id="etx-t-expense" aria-pressed="false" data-click-action="toggleGroup">支出</button>
+              <button class="tbtn income" id="etx-t-income"  aria-pressed="false" data-click-action="setEtxType" data-type="income">収入</button>
+              <button class="tbtn expense" id="etx-t-expense" aria-pressed="false" data-click-action="setEtxType" data-type="expense">支出</button>
             </div>
           </fieldset>
           <fieldset class="fieldset-reset mb-12">
@@ -649,8 +649,8 @@
       <div class="modal">
         <div class="modal-title" id="m-add-title">部員を追加</div>
         <div class="fg">
-          <div class="fi"><label for="ma-first-name">姓</label><input type="text" id="ma-first-name" name="member-first-name" placeholder="例：山田" autocomplete="given-name"></div>
-          <div class="fi"><label for="ma-last-name">名</label><input type="text" id="ma-last-name" name="member-last-name" placeholder="例：太郎" autocomplete="family-name"></div>
+          <div class="fi"><label for="ma-first-name">姓</label><input type="text" id="ma-first-name" name="member-first-name" placeholder="例：山田" autocomplete="family-name"></div>
+          <div class="fi"><label for="ma-last-name">名</label><input type="text" id="ma-last-name" name="member-last-name" placeholder="例：太郎" autocomplete="given-name"></div>
           <div class="fi">
             <label for="ma-grade">学年</label>
             <select id="ma-grade" name="member-grade" autocomplete="off">
@@ -689,8 +689,8 @@
 
         <!-- 基本情報タブ -->
         <div id="tab-basic-content" class="fg">
-          <div class="fi"><label for="me-first-name">姓</label><input type="text" id="me-first-name" name="edit-member-first-name" autocomplete="given-name"></div>
-          <div class="fi"><label for="me-last-name">名</label><input type="text" id="me-last-name" name="edit-member-last-name" autocomplete="family-name"></div>
+          <div class="fi"><label for="me-first-name">姓</label><input type="text" id="me-first-name" name="edit-member-first-name" autocomplete="family-name"></div>
+          <div class="fi"><label for="me-last-name">名</label><input type="text" id="me-last-name" name="edit-member-last-name" autocomplete="given-name"></div>
           <div class="fi">
             <label for="me-grade">学年</label>
             <select id="me-grade" name="edit-member-grade" autocomplete="off">
@@ -747,7 +747,7 @@
         <div class="modal-title" id="m-bulk-add-title">部員を一括登録</div>
 
         <!-- CSVファイルアップロード -->
-        <div style="margin-bottom:16px;padding:12px;background:var(--sur2);border:2px dashed var(--bdr);border-radius:8px;text-align:center" id="csv-drop-area" ondragover="event.preventDefault();this.style.borderColor='var(--grn)'" ondragleave="this.style.borderColor='var(--bdr)'" ondrop="event.preventDefault();this.style.borderColor='var(--bdr)';handleBulkAddFile({dataTransfer:event.dataTransfer})">
+        <div style="margin-bottom:16px;padding:12px;background:var(--sur2);border:2px dashed var(--bdr);border-radius:8px;text-align:center" id="csv-drop-area">
           <input type="file" id="bulk-members-file" accept=".csv" data-change-action="handleBulkAddFile" style="display:none">
           <div style="font-size:13px;margin-bottom:6px">📁 CSVファイルをここにドラッグ&ドロップ</div>
           <div style="font-size:11px;color:var(--tx2);margin-bottom:8px">または</div>
