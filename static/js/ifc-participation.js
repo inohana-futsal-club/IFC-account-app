@@ -89,7 +89,8 @@ async function importIfcParticipation(el) {
     const parts = [`${matched.length}件反映`];
     if (unmatched.length) parts.push(`未一致${unmatched.length}件(${unmatched.join('、')})`);
     if (ambiguous.length) parts.push(`氏名重複${ambiguous.length}件(${ambiguous.join('、')})`);
-    toast(`IFC参加日数: ${parts.join(' / ')}`);
+    // 氏名一覧が入ると読むのに時間がかかるため、通常のトースト(2.2秒)より長く表示する
+    toast(`IFC参加日数: ${parts.join(' / ')}`, 6000);
   } finally {
     if (el) el.disabled = false;
   }
