@@ -6,15 +6,28 @@
 ================================================================ */
 
 // 全角/半角スペースや全角英数字などの表記ゆれを吸収するための正規化。
+// 小書きの「ヶ/ヵ」はNFKCでは大きい「ケ/カ」に揃わないため個別に吸収する(例: 藤ヶ谷/藤ケ谷)。
 // 比較専用であり、表示用の氏名はそのまま使う。
 function normalizeMemberName(name) {
   if (name == null) return '';
-  return String(name).normalize('NFKC').replace(/\s+/g, '');
+  return String(name).normalize('NFKC').replace(/\s+/g, '').replace(/ヶ/g, 'ケ').replace(/ヵ/g, 'カ');
 }
 
-// IFCから返る { 氏名: 参加日数 } を現在の部員名簿(S.members)と氏名で突き合わせる。
+// IFCのレスポンスを部員1人ごとの配列に揃える。
+// members配列(姓・名付き)があればそれを使い、無い旧形式では
+// memberParticipationCounts(表示名→参加日数)から組み立てる。
+function toIfcParticipationEntries(result) {
+  if (Array.isArray(result.members)) return result.members;
+  return Object.entries(result.memberParticipationCounts || {}).map(
+    ([displayName, count]) => ({ displayName, participationCount: count })
+  );
+}
+
+// IFCから返る部員一覧を現在の部員名簿(S.members)と氏名で突き合わせる。
+// IFC側で姓・名が入力済みなら「姓＋名」のフルネームで、未入力なら表示名で照合する
+// (名簿のnameは「姓 名」形式のため、表示名(苗字だけ等)は通常一致しない)。
 // 同じ正規化結果になる部員が複数いる場合は誤反映を避けるためambiguousに回す。
-function matchIfcParticipationToMembers(counts) {
+function matchIfcParticipationToMembers(entries) {
   const normalizedToMembers = {};
   S.members.forEach(m => {
     const key = normalizeMemberName(m.name);
@@ -26,11 +39,14 @@ function matchIfcParticipationToMembers(counts) {
   const unmatched = [];
   const ambiguous = [];
 
-  Object.entries(counts || {}).forEach(([name, count]) => {
-    const candidates = normalizedToMembers[normalizeMemberName(name)] || [];
-    if (candidates.length === 1) matched.push({ member: candidates[0], count: Number(count) || 0 });
-    else if (candidates.length === 0) unmatched.push(name);
-    else ambiguous.push(name);
+  (entries || []).forEach(entry => {
+    const fullNameKey = normalizeMemberName(`${entry.lastName || ''}${entry.firstName || ''}`);
+    const key = fullNameKey || normalizeMemberName(entry.displayName);
+    const label = entry.displayName || `${entry.lastName || ''} ${entry.firstName || ''}`.trim();
+    const candidates = (key && normalizedToMembers[key]) || [];
+    if (candidates.length === 1) matched.push({ member: candidates[0], count: Number(entry.participationCount) || 0 });
+    else if (candidates.length === 0) unmatched.push(label);
+    else ambiguous.push(label);
   });
 
   return { matched, unmatched, ambiguous };
@@ -81,7 +97,7 @@ async function importIfcParticipation(el) {
       return;
     }
 
-    const { matched, unmatched, ambiguous } = matchIfcParticipationToMembers(result.memberParticipationCounts || {});
+    const { matched, unmatched, ambiguous } = matchIfcParticipationToMembers(toIfcParticipationEntries(result));
     for (const { member, count } of matched) {
       await setPrac(member.id, ym, count);
     }
