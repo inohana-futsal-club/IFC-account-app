@@ -8,6 +8,17 @@ function calcFee(attr, ym, pc) {
   return adj ? adj.amount : (S.fee.base[attr]||0);
 }
 
+// 部費回収状況の母数に含めるかどうか。
+// 男プレ/女プレ/マネは在籍していれば無条件で含める。
+// 幹部上は参加回数×単価で部費が決まり、参加0回の月は納入義務自体が発生しないため、
+// その月の参加回数が1回以上の人だけを含める。
+function isFeeCountable(memberId, ym) {
+  const attr = getMemberAttrInMonth(memberId, ym);
+  if (!attr) return false;
+  if (attr === 'exec') return ((S.pracCount[ym] || {})[memberId] || 0) >= 1;
+  return true;
+}
+
 function feeRecToRow(r) {
   return [r.id, r.member_id, r.ym, r.paid];
 }
@@ -74,11 +85,10 @@ function renderFee() {
   const rec=S.feeRec[ym], pc=S.pracCount[ym];
   let paid=0,unpaid=0,coll=0,rem=0;
   members.forEach(m => {
+    // 母数の対象外（期間外、または幹部上で参加回数0回）はスキップ
+    if (!isFeeCountable(m.id, ym)) return;
+
     const attr = getMemberAttrInMonth(m.id, ym);
-
-    // その月に該当する属性がない場合はスキップ（期間外）
-    if (!attr) return;
-
     const fee = calcFee(attr, ym, pc[m.id]||0);
     if (rec[m.id]) { paid++; coll+=fee; } else { unpaid++; rem+=fee; }
   });

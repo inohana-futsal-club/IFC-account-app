@@ -44,8 +44,8 @@ function renderDash() {
 
   const fym = document.getElementById('fee-month')?.value || ym;
   const rec = S.feeRec[fym] || {};
-  // 退部済み部員を分母・分子から除外するため、その月に在籍している部員に限定する
-  const activeMembers = S.members.filter(m => getMemberAttrInMonth(m.id, fym) !== null);
+  // 部費回収状況の母数と揃える（退部済み・参加0回の幹部上は分母・分子から除外）
+  const activeMembers = S.members.filter(m => isFeeCountable(m.id, fym));
   const tot = activeMembers.length;
   const paid = activeMembers.filter(m => rec[m.id]).length;
   const pct  = tot>0 ? Math.round(paid/tot*100) : 0;
