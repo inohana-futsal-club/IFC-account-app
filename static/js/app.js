@@ -322,6 +322,9 @@ document.addEventListener('DOMContentLoaded', () => {
     userNameEl.textContent = userEmail.split('@')[0];
   }
 
+  // スプレッドシートを直接開くリンク
+  document.getElementById('sheet-link').href = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+
   // グローバル会計年度初期化
   initGlobalFiscalYear();
 
