@@ -21,7 +21,11 @@ const IFC_PROXY_URL = 'https://script.google.com/macros/s/AKfycbzooP11l0MUKNe00i
 // 真の秘密にはならず、雑なbotによる無差別アクセスを軽く防ぐ程度の効果しかない。
 const IFC_PROXY_TOKEN = 'T51RvT3Vn00YPExWV7JP530uhmMrbPXR';
 
-const IFC_PROXY_TIMEOUT_MS = 10000;
+// IFC本体はGoogle Cloud Run上で動いており、利用頻度が低いとインスタンスが
+// スケールダウンするため、次回アクセス時にコールドスタート(コンテナ起動+アプリ初期化+DB接続)
+// が発生し10秒を超えることがある。GASプロキシ自体の起動オーバーヘッドも加わるため、
+// それらを合わせて待てるよう30秒に設定している。
+const IFC_PROXY_TIMEOUT_MS = 30000;
 
 const SH = {
   TX:      'transactions',
