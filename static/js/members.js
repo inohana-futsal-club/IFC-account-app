@@ -482,7 +482,7 @@ async function bulkAddMembers() {
   const attrMap = {
     '男プレ': 'male',
     '女プレ': 'female',
-    'マネージャー': 'manager',
+    'マネ': 'manager',
     '幹部上': 'exec'
   };
 

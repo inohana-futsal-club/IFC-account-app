@@ -60,7 +60,7 @@
           <div class="user-info">🔐 <span id="user-name">loading...</span></div>
 
           <div class="menu-section">
-            <label>📅 会計年度</label>
+            <label for="global-fiscal-year">📅 会計年度</label>
             <select id="global-fiscal-year" data-change-action="switchGlobalFiscalYear"></select>
             <button class="btn bs sm" data-click-action="openCarryoverModal" style="width:100%;margin-top:8px;font-size:12px">↩ 前年度繰越を登録</button>
           </div>
@@ -347,7 +347,7 @@
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
             <select id="f-attr" name="filter-attribute" aria-label="属性で絞り込み" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての属性</option><option value="male">男プレ</option>
-              <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
+              <option value="female">女プレ</option><option value="manager">マネ</option><option value="exec">幹部上</option>
               <option value="ob">OB/OG</option>
             </select>
             <select id="f-grade" name="filter-grade" aria-label="学年で絞り込み" data-change-action="renderMembers" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
@@ -429,7 +429,7 @@
               <option value="">すべての属性</option>
               <option value="male">男プレ</option>
               <option value="female">女プレ</option>
-              <option value="manager">マネージャー</option>
+              <option value="manager">マネ</option>
               <option value="exec">幹部上</option>
             </select>
             <select id="fee-f-grade" name="fee-filter-grade" aria-label="学年で絞り込み" data-change-action="renderFee" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
@@ -669,7 +669,7 @@
             <label for="ma-attr">属性</label>
             <select id="ma-attr" name="member-attr" autocomplete="off">
               <option value="male">男プレ</option><option value="female">女プレ</option>
-              <option value="manager">マネージャー</option><option value="exec">幹部上</option>
+              <option value="manager">マネ</option><option value="exec">幹部上</option>
             </select>
           </div>
           <div class="fi">
@@ -706,7 +706,7 @@
             </select>
           </div>
           <div class="fi">
-            <label>現在の属性（今月時点）</label>
+            <span class="field-label">現在の属性（今月時点）</span>
             <div id="me-current-attr" style="padding:8px;background:var(--sur2);border-radius:6px;border:1px solid var(--bdr)"></div>
           </div>
         </div>
@@ -729,7 +729,7 @@
                 <select id="new-period-attr" autocomplete="off">
                   <option value="male">男プレ</option>
                   <option value="female">女プレ</option>
-                  <option value="manager">マネージャー</option>
+                  <option value="manager">マネ</option>
                   <option value="exec">幹部上</option>
                 </select>
               </div>
@@ -794,7 +794,7 @@
           <select id="bulk-change-to-attr" style="width:100%;padding:12px;border:1px solid var(--bdr);border-radius:8px;font-size:14px">
             <option value="male">男プレ</option>
             <option value="female">女プレ</option>
-            <option value="manager">マネージャー</option>
+            <option value="manager">マネ</option>
             <option value="exec">幹部上</option>
           </select>
         </div>
@@ -814,7 +814,7 @@
         <div class="fg mb-16">
           <div class="fi"><label for="fs-male"><span class="bdg male">男プレ</span> 月額</label><input type="number" id="fs-male" name="fee-male" min="0" inputmode="numeric" autocomplete="off"></div>
           <div class="fi"><label for="fs-female"><span class="bdg female">女プレ</span> 月額</label><input type="number" id="fs-female" name="fee-female" min="0" inputmode="numeric" autocomplete="off"></div>
-          <div class="fi"><label for="fs-manager"><span class="bdg manager">マネージャー</span> 月額</label><input type="number" id="fs-manager" name="fee-manager" min="0" inputmode="numeric" autocomplete="off"></div>
+          <div class="fi"><label for="fs-manager"><span class="bdg manager">マネ</span> 月額</label><input type="number" id="fs-manager" name="fee-manager" min="0" inputmode="numeric" autocomplete="off"></div>
           <div class="fi"><label for="fs-exec"><span class="bdg exec">幹部上</span> 1回あたり</label><input type="number" id="fs-exec" name="fee-exec" min="0" inputmode="numeric" autocomplete="off"></div>
           <div class="fi"><label for="fs-max-exec"><span class="bdg exec">幹部上</span> 最大月額</label><input type="number" id="fs-max-exec" name="fee-max-exec" min="0" inputmode="numeric" autocomplete="off"></div>
         </div>
@@ -827,7 +827,7 @@
               <label for="adj-attr">属性</label>
               <select id="adj-attr" name="adjustment-attr" autocomplete="off">
                 <option value="male">男プレ</option><option value="female">女プレ</option>
-                <option value="manager">マネージャー</option><option value="exec">幹部上</option>
+                <option value="manager">マネ</option><option value="exec">幹部上</option>
               </select>
             </div>
             <div class="fi"><label for="adj-amt">金額（円）</label><input type="number" id="adj-amt" name="adjustment-amount" min="0" placeholder="0" inputmode="numeric" autocomplete="off"></div>

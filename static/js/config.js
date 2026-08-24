@@ -40,7 +40,7 @@ const SH = {
 /* ================================================================
    CONSTANTS
 ================================================================ */
-const ATTR_L     = { male:'男プレ', female:'女プレ', manager:'マネージャー', exec:'幹部上' };
+const ATTR_L     = { male:'男プレ', female:'女プレ', manager:'マネ', exec:'幹部上' };
 
 const ATTR_ORDER = { male:0, female:1, manager:2, exec:3 };
 
