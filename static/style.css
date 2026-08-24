@@ -409,8 +409,8 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
    MEMBER TABLE
 ================================================================ */
 .mtbl { width: 100%; border-collapse: collapse; }
-.mtbl th { background: var(--sur2); padding: 8px 10px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); white-space: nowrap; }
-.mtbl td { padding: 8px 10px; border-bottom: 1px solid var(--bdr); font-size: 13px; vertical-align: middle; white-space: nowrap; }
+.mtbl th { background: var(--sur2); padding: 8px 8px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); white-space: nowrap; }
+.mtbl td { padding: 8px 8px; border-bottom: 1px solid var(--bdr); font-size: 13px; vertical-align: middle; white-space: nowrap; }
 .mtbl tr:last-child td { border-bottom: none; }
 .mtbl tr:hover td { background: var(--sur2); }
 .mtbl tr.member-row-selected td { background: var(--grn-l); color: var(--tx); font-weight: 600; }
