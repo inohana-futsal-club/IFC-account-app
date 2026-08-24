@@ -98,11 +98,15 @@ async function importIfcParticipation(el) {
     }
 
     const { matched, unmatched, ambiguous } = matchIfcParticipationToMembers(toIfcParticipationEntries(result));
-    for (const { member, count } of matched) {
+    // 参加回数は幹部上(exec)の部費計算にしか使われないため(calcFee参照)、
+    // それ以外の属性への書き込みは無駄なSheets APIリクエストになるだけでなく、
+    // 1人ずつ順番に書き込む処理のため人数分だけ待ち時間が伸びる。反映対象を絞って短縮する。
+    const execMatched = matched.filter(({ member }) => getMemberAttrInMonth(member.id, ym) === 'exec');
+    for (const { member, count } of execMatched) {
       await setPrac(member.id, ym, count);
     }
 
-    const parts = [`${matched.length}件反映`];
+    const parts = [`${execMatched.length}件反映`];
     if (unmatched.length) parts.push(`未一致${unmatched.length}件(${unmatched.join('、')})`);
     if (ambiguous.length) parts.push(`氏名重複${ambiguous.length}件(${ambiguous.join('、')})`);
     // 氏名一覧が入ると読むのに時間がかかるため、通常のトースト(2.2秒)より長く表示する
